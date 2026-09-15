@@ -127,26 +127,31 @@ fix_sql_prompt = ChatPromptTemplate.from_template(
 
 # 定义查询函数
 async def get_recommend(sql):
-    try:
+    """调用 MCP 查询，带 15s 超时；区分连接错误(connection_error)与SQL错误(error)。
+
+    - connection_error：MCP 服务未启动/超时，属基础设施故障，上层不应让 LLM 误以为是 SQL 写错
+    - error：SQL 执行层面的错误，上层可交给 LLM 修正重试
+    """
+    async def _call():
         # 启动 MCP server，通过streamable建立连接
         async with streamablehttp_client("http://127.0.0.1:8007/mcp") as (read, write, _):
             # 使用读写通道创建 MCP 会话
             async with ClientSession(read, write) as session:
-                try:
-                    await session.initialize()
-                    # 工具调用
-                    result = await session.call_tool("query_recommend", {"sql": sql})
-                    result_data = json.loads(result) if isinstance(result, str) else result
-                    logger.info(f"综合推荐查询结果：{result_data}")
-                    return result_data.content[0].text
-                except Exception as e:
-                    err_msg = format_exception(e)
-                    logger.error(f"综合推荐 MCP 测试出错：{err_msg}")
-                    return {"status": "error", "message": f"综合推荐 MCP 查询出错：{err_msg}"}
+                await session.initialize()
+                # 工具调用
+                result = await session.call_tool("query_recommend", {"sql": sql})
+                result_data = json.loads(result) if isinstance(result, str) else result
+                return result_data.content[0].text
+
+    try:
+        return await asyncio.wait_for(_call(), timeout=15)
+    except asyncio.TimeoutError:
+        logger.error(f"综合推荐 MCP 调用超时（15s）")
+        return {"status": "connection_error", "message": "综合推荐 服务响应超时，请稍后重试。"}
     except Exception as e:
         err_msg = format_exception(e)
         logger.error(f"连接或会话初始化时发生错误: {err_msg}")
-        return {"status": "error", "message": f"连接或会话初始化时发生错误: {err_msg}"}
+        return {"status": "connection_error", "message": "综合推荐 服务连接失败，请确认对应服务已启动。"}
 
 # 将综合推荐结果格式化为美观的编号列表文本（markdown 风格，前端可渲染；所有字段 None 安全）
 def format_recommend_rows(data):
@@ -193,7 +198,7 @@ agent_card = AgentCard(
     description="基于LangChain提供郑州综合推荐服务的助手（跨房源/周边/地铁组合推荐）",
     url="http://localhost:5009",
     version="1.0.0",
-    capabilities={"streaming": True, "memory": True},  # 设置能力：支持流式和内存
+    capabilities={"streaming": False, "memory": True},  # 服务端为同步处理，前端分块推送，不声明未实现的流式能力
     skills=[  # 定义技能列表
         AgentSkill(
             name="execute recommend query",
@@ -297,6 +302,12 @@ class RecommendQueryServer(A2AServer):
                     response_text = format_recommend_rows(data)  # 格式化为美观的编号列表
                     task.artifacts = [{"parts": [{"type": "text", "text": response_text}]}]
                     task.status = TaskStatus(state=TaskState.COMPLETED)
+                    return task
+                elif response.get("status") == "connection_error":
+                    # 基础设施故障（MCP未启动/超时）→ 直接失败，不浪费 LLM 调用去"修正SQL"
+                    task.status = TaskStatus(state=TaskState.FAILED,
+                                             message={"role": "agent",
+                                                      "content": {"text": response.get("message", "服务暂不可用，请稍后重试。")}})
                     return task
                 elif response.get("status") == "error":
                     # P1-3：SQL 执行报错 → 反馈给 LLM 修正后重试

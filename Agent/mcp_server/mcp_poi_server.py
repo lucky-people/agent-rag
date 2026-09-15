@@ -21,7 +21,7 @@ from mcp.server.fastmcp import FastMCP
 
 from Agent.config import Config
 from Agent.create_logger import logger
-from Agent.utils.format import DateEncoder, default_encoder, ensure_limit
+from Agent.utils.format import DateEncoder, default_encoder, ensure_limit, validate_readonly_sql
 
 conf = Config()
 
@@ -40,8 +40,13 @@ class PoiService:  # 定义POI服务类，封装数据库操作逻辑
     # 定义执行SQL查询方法，输入SQL字符串，返回JSON字符串
     def execute_query(self, sql: str) -> str:
         try:
+            # 只读白名单校验：仅允许 SELECT/WITH，拒绝写操作与危险语句
+            ok, safe_sql = validate_readonly_sql(sql)
+            if not ok:
+                logger.warning(f"SQL白名单校验拒绝: {safe_sql}")
+                return json.dumps({"status": "error", "message": safe_sql}, ensure_ascii=False)
             cursor = self.conn.cursor(dictionary=True)
-            cursor.execute(ensure_limit(sql))
+            cursor.execute(safe_sql)
             results = cursor.fetchall()
             cursor.close()
             # 格式化结果

@@ -37,8 +37,20 @@ conf = Config()
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sessions = {}           # session_id -> {network, llm, history, messages}
+sessions = {}           # session_id -> {network, llm, history, messages, last_access}
 sessions_lock = threading.Lock()
+SESSION_TTL = 3600     # 会话空闲过期时间（秒）：1小时无访问自动清理
+
+def _cleanup_sessions():
+    """清理空闲超时的会话，防止内存无限增长（重启后历史丢失属预期）。"""
+    now = time.time()
+    with sessions_lock:
+        expired = [sid for sid, s in sessions.items()
+                   if now - s.get("last_access", 0) > SESSION_TTL]
+        for sid in expired:
+            del sessions[sid]
+        if expired:
+            logger.info(f"已清理 {len(expired)} 个空闲超时会话")
 
 # ==================== 智能体协作链路追踪 ====================
 traces = {}             # session_id -> [trace1, trace2, ...]
@@ -251,7 +263,9 @@ def get_session(session_id):
                 "llm": llm,
                 "history": "",
                 "messages": [],
+                "last_access": time.time(),
             }
+        sessions[session_id]["last_access"] = time.time()
         return sessions[session_id]
 
 
@@ -276,7 +290,8 @@ def intent_agent(sess, user_input):
 def process(sess, prompt, session_id="default"):
     """处理用户输入：意图识别 + 双路线路由（A2A智能体 / RAG法律）"""
     llm = sess["llm"]
-    sess["history"] += f"\nUser: {prompt}"
+    with sessions_lock:
+        sess["history"] += f"\nUser: {prompt}"
 
     # 创建协作链路追踪
     trace = create_trace(session_id, prompt)
@@ -377,14 +392,17 @@ def process(sess, prompt, session_id="default"):
                 if agent_name == "HouseQueryAssistant" and conf.enable_rental_tips:
                     responses.append("\n\n💡 需要我帮你普及租房注意事项或租客权益吗？或推荐周边好玩的？")
             except Exception as e:
+                logger.error(f"{agent_name} 调用异常: {str(e)}")
                 add_trace_step(trace, agent_name, agent_name,
-                                input_data=query_str, output_data=str(e),
+                                input_data=query_str, output_data="调用异常（详见日志）",
                                 status="error", error_msg=str(e),
                                 start_time=agent_start)
-                responses.append(f"{agent_name}调用失败：{str(e)}")
+                # 脱敏：不向用户暴露内部异常细节（路径/地址/堆栈），只给通用提示
+                responses.append(f"{agent_name}暂时不可用，请稍后重试或换个说法。")
         response = "\n\n".join(responses)
 
-    sess["history"] += f"\nAssistant: {response}"
+    with sessions_lock:
+        sess["history"] += f"\nAssistant: {response}"
     # 完成trace记录
     finish_trace(trace)
     return response, intents, route, trace
@@ -409,7 +427,7 @@ def chat():
         reply, intents, route, trace = process(sess, message, session_id)
     except Exception as e:
         logger.error(f"处理异常: {str(e)}")
-        reply = f"处理失败：{str(e)}。请重试。"
+        reply = "处理失败，请稍后重试或换个说法。"
         intents = []
         route = "error"
         trace = None
@@ -461,7 +479,8 @@ def chat_stream():
 
     sess = get_session(session_id)
     sess.setdefault("legal_session_id", session_id)
-    sess["history"] += f"\nUser: {message}"
+    with sessions_lock:
+        sess["history"] += f"\nUser: {message}"
 
     def _save_history(uid, sid, role, content, route_name):
         """保存聊天历史（异步，不阻塞流式输出）"""
@@ -495,7 +514,8 @@ def chat_stream():
                 finish_trace(trace)
                 safe = reply.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
                 yield f'data: {{"type":"token","content":"{safe}"}}\n\n'
-                sess["history"] += f"\nAssistant: {reply}"
+                with sessions_lock:
+                    sess["history"] += f"\nAssistant: {reply}"
                 _save_history(user_id, session_id, "user", message, route)
                 _save_history(user_id, session_id, "assistant", reply, route)
                 suggestions = DEFAULT_SUGGESTIONS
@@ -588,22 +608,44 @@ def chat_stream():
                     all_responses.append(legal_answer)
                     continue
 
-                # === 通用对话路线：直接调用大模型，分块模拟流式 ===
+                # === 通用对话路线：LLM 真流式（astream 逐 token 推送） ===
                 if agent_name == "ChatLLM":
                     route = "chat"
                     chat_start = time.time()
                     yield 'data: {"type":"start","route":"chat"}\n\n'
                     chat_prompt = f"你是一个友好的智能助手，请用简洁自然的中文回答用户问题。\n用户问题：{query_str}"
-                    chat_response = sess["llm"].invoke(chat_prompt).content.strip()
+                    # 后台线程消费 LLM token 流 → 队列逐条投递给 SSE 生成器，实现首字低延迟的真流式
+                    import queue as _queue
+                    _evt_q = _queue.Queue()
+                    _chat_collected = []
+
+                    def _chat_worker():
+                        async def _run():
+                            async for chunk in sess["llm"].astream(chat_prompt):
+                                token_text = getattr(chunk, "content", "")
+                                if token_text:
+                                    _chat_collected.append(token_text)
+                                    safe = token_text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                                    _evt_q.put(f'data: {{"type":"token","content":"{safe}"}}\n\n')
+                        try:
+                            asyncio.run(_run())
+                        except Exception as e:
+                            logger.error(f"闲聊流式输出异常: {str(e)}")
+                            _evt_q.put(f'data: {{"type":"token","content":"（回答中断，请重试）"}}\n\n')
+                        finally:
+                            _evt_q.put(None)   # 结束哨兵
+
+                    threading.Thread(target=_chat_worker, daemon=True).start()
+                    while True:
+                        evt = _evt_q.get()
+                        if evt is None:
+                            break
+                        yield evt
+                    chat_response = "".join(_chat_collected).strip()
                     add_trace_step(trace, "ChatLLM", "通用对话LLM",
                                     input_data=query_str, output_data=chat_response,
                                     start_time=chat_start)
-                    all_responses.append(chat_response)
-                    # 分块推送（每 6 个字一个块，模拟流式效果）
-                    for i in range(0, len(chat_response), 6):
-                        chunk = chat_response[i:i+6]
-                        safe = chunk.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                        yield f'data: {{"type":"token","content":"{safe}"}}\n\n'
+                    all_responses.append(chat_response or "抱歉，暂时没有生成回答。")
                     continue
 
                 # === 智能体路线：同步调用后分块模拟流式 ===
@@ -660,7 +702,8 @@ def chat_stream():
                     all_responses.append(_guide)
 
             reply = "\n\n".join(all_responses)
-            sess["history"] += f"\nAssistant: {reply}"
+            with sessions_lock:
+                sess["history"] += f"\nAssistant: {reply}"
             _save_history(user_id, session_id, "user", message, route)
             _save_history(user_id, session_id, "assistant", reply, route)
 
@@ -1314,4 +1357,13 @@ def user_history():
 
 if __name__ == "__main__":
     logger.info("智租顾问 统一智能助手 Web 前端已启动: http://localhost:8501")
+    # 后台线程定期清理空闲超时会话，防止内存无限增长
+    def _cleanup_loop():
+        while True:
+            time.sleep(300)   # 每5分钟清理一次
+            try:
+                _cleanup_sessions()
+            except Exception as e:
+                logger.error(f"会话清理异常: {e}")
+    threading.Thread(target=_cleanup_loop, daemon=True).start()
     app.run(host="127.0.0.1", port=8501, debug=False, threaded=True)
