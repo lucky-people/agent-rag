@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>智租顾问 · 全项目架构图 v3</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f7f7f8; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #222; padding: 28px 32px; }
+  .wrap { width: 1560px; margin: 0 auto; }
+  .title { font-size: 34px; font-weight: 800; color: #0d1b2a; text-align: center; letter-spacing: 1px; }
+  .subtitle { font-size: 17px; color: #5b5a55; text-align: center; margin: 8px 0 24px; }
+  .arrow-down { text-align: center; font-size: 20px; color: #0d1b2a; line-height: 1.6; }
+  .arrow-tiny { text-align: center; font-size: 14px; color: #0d1b2a; line-height: 1.4; }
+
+  .row { display: flex; gap: 14px; margin: 10px 0; }
+  .box { background: #fff; border-radius: 10px; padding: 16px 20px; }
+  .box-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .box-sub { font-size: 14px; color: #5b5a55; line-height: 1.7; }
+  .tag { display: inline-block; background: #eef1f5; border-radius: 4px; padding: 2px 8px; font-size: 13px; color: #3a506b; margin: 1px 2px; }
+
+  /* 颜色族 */
+  .navy { border: 2px solid #0d1b2a; }
+  .navy .box-title { color: #0d1b2a; }
+  .blue { border: 2px solid #3a506b; }
+  .blue .box-title { color: #3a506b; }
+  .gold { border: 2px solid #c9a961; }
+  .gold .box-title { color: #8a6d1f; }
+  .wine { border: 2px solid #6b2c3e; }
+  .wine .box-title { color: #6b2c3e; }
+  .gray { border: 1px solid #b5b1a8; background: #e8e4dc; }
+  .gray .box-title { color: #0d1b2a; }
+
+  .inner { background: #eef1f5; border-radius: 6px; padding: 10px 14px; margin-top: 8px; font-size: 15px; line-height: 1.6; color: #222; }
+  .inner.wine-bg { background: #f6ecee; }
+  .inner.gold-bg { background: #f7f0e0; }
+  .inner small { display: block; font-size: 13px; color: #5b5a55; }
+  .mini { font-size: 13px; color: #5b5a55; margin-top: 6px; }
+
+  .engine-card { flex: 1.1; min-width: 0; }
+  .orchestrator-card { flex: 0.95; min-width: 0; }
+  .legend { display: flex; justify-content: center; gap: 26px; font-size: 15px; margin: 16px 0 4px; color: #222; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { display: inline-block; width: 15px; height: 15px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title">智租顾问 · 全项目架构</div>
+  <div class="subtitle">多智能体 × RAG 双引擎 · 一次提问的全链路：意图路由 → 双引擎并行 → 共享设施 → 流式返回</div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#0d1b2a;"></span> 多智能体引擎</span>
+    <span><span class="dot" style="background:#6b2c3e;"></span> RAG 引擎</span>
+    <span><span class="dot" style="background:#c9a961;"></span> 编排器</span>
+    <span><span class="dot" style="background:#e8e4dc;border:1px solid #b5b1a8;"></span> 共享设施 / 工程保障</span>
+  </div>
+
+  <!-- 入口 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box navy" style="width:520px;text-align:center;">
+      <div class="box-title">前端 · 新版网页.html</div>
+      <div class="box-sub">SSE 流式打字机 · 房源卡片渐进渲染 · 链路追踪面板 · 收藏对比</div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- 主服务 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box blue" style="width:900px;text-align:center;">
+      <div class="box-title">主服务 web_server.py · Flask :8501</div>
+      <div class="box-sub">
+        <span class="tag">BERT 两级路由</span>
+        <span class="tag">多意图并行预取 15s 超时</span>
+        <span class="tag">会话 TTL + 锁内写</span>
+        <span class="tag">闲聊直答 LLM（astream 真流式）</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ 按意图分流</div>
+
+  <!-- 双引擎 -->
+  <div class="row">
+    <!-- 左：多智能体引擎 -->
+    <div class="box navy engine-card">
+      <div class="box-title">多智能体引擎 · 结构化查询</div>
+      <div class="inner">
+        HouseAgent · MetroAgent · PoiAgent
+        <small>A2A 协议 :5006-5008</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner">
+        MCP 工具层 :8004-8006
+        <small>SQL 只读白名单（仅 SELECT/WITH）</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner">
+        MySQL · 高德 API
+        <small>房源 / 站点 / POI 数据</small>
+      </div>
+    </div>
+
+    <!-- 中：编排器 -->
+    <div class="box gold orchestrator-card">
+      <div class="box-title">RecommendAgent 编排器</div>
+      <div class="box-sub" style="font-size:14px;line-height:1.7;">跨域复杂问题：<br>"1号线附近2000以下房源+周边景点"</div>
+      <div class="inner gold-bg">
+        LLM 拆解多域子任务 → 并行调子 Agent → 汇总
+        <small>单域 / 子Agent故障自动降级回退</small>
+      </div>
+      <div class="inner gold-bg" style="margin-top:8px;">
+        编排 trace
+        <small>子调用状态/耗时 → 前端链路面板展开</small>
+      </div>
+      <div class="mini">↑ 复用左路 3 个子 Agent</div>
+    </div>
+
+    <!-- 右：RAG 引擎 -->
+    <div class="box wine engine-card">
+      <div class="box-title">RAG 法律引擎 · 非结构化知识</div>
+      <div class="inner wine-bg">
+        Redis 缓存
+        <small>高频 FAQ · 命中快约 5 倍</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner wine-bg">
+        BM25 + 稠密向量 混合检索
+        <small>Milvus edurag_final</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner wine-bg">
+        BGE Reranker 重排 → LLM 生成
+        <small>法律问答 / 合同审查 · 流式输出</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">▼ 共享基础设施</div>
+
+  <!-- 共享设施 -->
+  <div class="row">
+    <div class="box gray" style="flex:1.2;text-align:center;">
+      <div class="box-title" style="font-size:17px;">DashScope 通义千问</div>
+      <div class="box-sub" style="font-size:13px;">意图识别 / 拆解 / 生成 · config_local 密钥隔离</div>
+    </div>
+    <div class="box gray" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">MySQL 8.0 :3306</div>
+      <div class="box-sub" style="font-size:13px;">房源 / POI / 地铁 / 用户 · seed_data.sql 开箱演示</div>
+    </div>
+    <div class="box gray" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">Milvus 2.4 :19530</div>
+      <div class="box-sub" style="font-size:13px;">法律知识向量库 edurag_final</div>
+    </div>
+    <div class="box gray" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">Redis 7 :6379</div>
+      <div class="box-sub" style="font-size:13px;">高频 FAQ 缓存</div>
+    </div>
+  </div>
+
+  <!-- 工程保障 -->
+  <div class="box gray" style="margin-top:14px;text-align:center;padding:12px 20px;">
+    <div class="box-sub" style="font-size:14px;">
+      <b>工程保障：</b>
+      CI 质量门（编译 + 41 单测 + SQL 安全回归） · docker-compose 一键中间件 · 启动系统.bat / start.sh 一键 9 服务
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
