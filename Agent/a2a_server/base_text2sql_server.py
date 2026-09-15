@@ -22,7 +22,7 @@ import pytz
 from python_a2a import A2AServer, TaskStatus, TaskState
 
 from Agent.create_logger import logger
-from Agent.utils.format import format_exception, robust_json_loads, extract_sql
+from Agent.utils.format import robust_json_loads, extract_sql
 
 
 class Text2SqlAgentServer(A2AServer):

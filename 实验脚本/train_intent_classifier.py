@@ -42,7 +42,7 @@ if os.path.exists(MODEL_DIR):
     shutil.rmtree(MODEL_DIR)
     print(f"  ✅ 已删除旧模型目录: {MODEL_DIR}")
 else:
-    print(f"  ⏭️  旧模型目录不存在，跳过删除")
+    print("  ⏭️  旧模型目录不存在，跳过删除")
 
 # ============================================================
 # 步骤2：加载训练数据
@@ -111,7 +111,7 @@ else:
     print(f"  准确率: {accuracy:.2%}")
 
     if misclassified:
-        print(f"\n  误分类案例（前10条）:")
+        print("\n  误分类案例（前10条）:")
         for q, true, pred in misclassified[:10]:
             print(f"    ❌ '{q}' -> 预测:{pred} 真实:{true}")
 

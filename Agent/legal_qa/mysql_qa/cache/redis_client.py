@@ -2,7 +2,6 @@
 
 import redis
 import json
-import os, sys
 
 
 # 统一使用以 Agent.legal_qa 为根的绝对导入, 不再手动修改 sys.path.

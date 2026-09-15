@@ -51,8 +51,6 @@ print(f"📋 加载测试集: {len(questions)} 道问题")
 # ==================== 初始化检索组件 ====================
 print("\n🔧 正在初始化检索组件...")
 
-from Agent.legal_qa.base.config import config
-from Agent.legal_qa.base.logger import logger
 from Agent.legal_qa.mysql_qa import MySQLClient, RedisClient, BM25Search
 from Agent.legal_qa.rag_qa import VectorStore
 import numpy as np
@@ -370,7 +368,7 @@ with open(summary_path, "w", encoding="utf-8") as f:
     f.write("RAG检索策略消融实验 - 汇总报告\n")
     f.write("=" * 60 + "\n\n")
     f.write(f"测试问题数: {len(questions)}\n")
-    f.write(f"评估指标: Recall@5, MRR, 平均检索耗时\n\n")
+    f.write("评估指标: Recall@5, MRR, 平均检索耗时\n\n")
     f.write(f"{'策略':<20} {'Recall@5':<12} {'MRR':<12} {'平均耗时(ms)':<15} {'命中题数':<10}\n")
     f.write("-" * 70 + "\n")
     for sname, metrics in summary.items():

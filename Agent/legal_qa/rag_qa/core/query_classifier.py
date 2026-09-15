@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 # todo 1.导包
 # 导入标准库
 import json
-import os, sys
+import os
 
 # 统一使用以 Agent.legal_qa 为根的绝对导入, 不再手动修改 sys.path.
 # 定位 rag_qa 目录: 不修改 sys.path, 仅用于拼接本地 BERT 模型/训练产物路径.

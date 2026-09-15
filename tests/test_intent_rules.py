@@ -12,7 +12,6 @@
 import unittest
 import sys
 import os
-from unittest.mock import patch
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
@@ -24,7 +23,6 @@ class TestIntentKeywordRules(unittest.TestCase):
 
     def _classify_with_keywords(self, query):
         """绕过模型加载，直接执行 predict_category 中的关键词前置逻辑"""
-        from Agent.legal_qa.rag_qa.core import query_classifier as qc
 
         # 复用模块中的关键词列表（避免测试与实现脱节）
         keywords = [

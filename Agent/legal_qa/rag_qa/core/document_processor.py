@@ -22,7 +22,6 @@ except ImportError as _e:
 from Agent.legal_qa.base.config import Config      # 配置类
 from Agent.legal_qa.base.logger import logger      # 日志类
 from langchain_core.documents import Document
-import sys
 
 
 

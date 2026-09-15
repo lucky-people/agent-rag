@@ -21,7 +21,7 @@ from mcp.server.fastmcp import FastMCP
 
 from Agent.config import Config
 from Agent.create_logger import logger
-from Agent.utils.format import DateEncoder, default_encoder, ensure_limit, validate_readonly_sql
+from Agent.utils.format import DateEncoder, default_encoder, validate_readonly_sql
 
 conf = Config()
 

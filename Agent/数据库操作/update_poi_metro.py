@@ -9,7 +9,6 @@ import math
 import os
 import importlib.util as _ilu
 import mysql.connector
-from mysql.connector import Error
 
 # ========== 密钥加载（优先环境变量，其次 config_local/keys.py） ==========
 # config_local/ 已被 .gitignore 排除，不会上传到仓库

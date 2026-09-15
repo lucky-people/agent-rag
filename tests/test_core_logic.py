@@ -9,7 +9,6 @@
 import unittest
 import sys
 import os
-import asyncio
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
@@ -134,7 +133,6 @@ class TestOrchestrationFallback(unittest.TestCase):
 
     def test_split_domains_parses_multi(self):
         """多域拆解：'房源+地铁'应识别为两个域"""
-        from Agent.a2a_server import recommend_server as rs
         import unittest.mock as mock
         srv = self._new_srv()
         fake_chain = mock.MagicMock()
@@ -151,7 +149,6 @@ class TestOrchestrationFallback(unittest.TestCase):
 
     def test_split_domains_fallback_on_llm_error(self):
         """LLM 拆解失败（返回非 JSON）应回退单域 house，不崩溃"""
-        from Agent.a2a_server import recommend_server as rs
         import unittest.mock as mock
         srv = self._new_srv()
         fake_chain = mock.MagicMock()

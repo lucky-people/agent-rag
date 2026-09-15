@@ -29,7 +29,7 @@ from sentence_transformers import CrossEncoder
 
 from Agent.legal_qa.rag_qa.core.document_processor import process_documents
 import hashlib
-import sys, os
+import os
 
 # 统一使用以 Agent.legal_qa 为根的绝对导入, 不再手动修改 sys.path.
 from Agent.legal_qa.base.config import Config

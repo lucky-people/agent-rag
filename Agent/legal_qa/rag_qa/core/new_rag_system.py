@@ -3,7 +3,7 @@
 
 
 # todo 1.导包
-import sys, os                                  # 导入路径处理和系统配置.
+import os                                  # 导入路径处理和系统配置.
 import time                                     # 导入 time 模块，用于计算时间
 
 from Agent.legal_qa.rag_qa.core.prompts import RAGPrompts                 # 导入RAG相关的提示模板 -> 定义大模型的输入和输出格式.
@@ -23,7 +23,6 @@ rag_qa_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 优化1: 新增导包内容.
 # 注意：此处不再模块级加载 BertModel/BertTokenizer（原代码加载后未使用，严重拖慢初始化）
 # QueryClassifier 内部会按需加载 BertForSequenceClassification
-from openai import OpenAI
 import re
 
 
