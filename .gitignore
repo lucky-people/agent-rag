@@ -91,3 +91,8 @@ htmlcov/
 *.bak
 *.swp
 ._*
+
+# ========== 开发辅助文件（本机使用，不上传） ==========
+仓库地址.txt
+extract_deps.py
+env_full_deps.txt
