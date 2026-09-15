@@ -1,0 +1,9 @@
+# ============================================================
+# GPU 可选依赖（CUDA 版 PyTorch）
+# 仅当本机有 NVIDIA GPU 且已安装 CUDA 驱动时安装：
+#   pip install -r requirements.txt -r requirements-gpu.txt
+# 说明：此文件会覆盖 requirements.txt 中的 CPU 版 torch。
+# ============================================================
+--extra-index-url https://download.pytorch.org/whl/cu132
+torch==2.13.0+cu132
+torchvision==0.28.0+cu132

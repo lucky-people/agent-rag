@@ -1,7 +1,10 @@
 # ============================================================
 # 基于多智能体与RAG的智能租房咨询系统 - 依赖清单
 # 环境: Python 3.10+ / conda 虚拟环境 lang_env
-# 安装: pip install -r requirements.txt
+# 安装:
+#   CPU 机器:  pip install -r requirements.txt
+#   GPU 机器:  pip install -r requirements.txt -r requirements-gpu.txt
+#   （CUDA 版 torch 体积大且非 CUDA 环境装不上，故拆分为两个文件）
 # ============================================================
 
 # ---------- 核心依赖（主链路必需） ----------
@@ -9,12 +12,11 @@
 Flask==3.1.1
 fastapi==0.116.1
 
-# LLM / 向量模型
-openai==1.97.1
+# LLM / 向量模型（torch 默认安装 CPU 版；GPU 用户另装 requirements-gpu.txt 覆盖为 CUDA 版）
 sentence-transformers==5.7.0
 transformers==4.54.1
-torch==2.13.0+cu132
-torchvision==0.28.0+cu132
+torch==2.13.0
+torchvision==0.28.0
 
 # LangChain 框架
 langchain==0.3.26

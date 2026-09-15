@@ -1,0 +1,69 @@
+# ============================================================
+# 智租顾问（Zhizu Advisor）依赖中间件一键启动
+#   MySQL 8.0  -> 房源/POI/地铁/用户数据
+#   Redis 7    -> 高频问答缓存
+#   Milvus 2.4 -> 法律文档向量库
+# 用法：
+#   docker compose up -d          # 启动
+#   docker compose down           # 停止（保留数据）
+#   docker compose down -v        # 停止并清空数据卷
+# 初始化：
+#   docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/rental_schema.sql
+#   docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
+# ============================================================
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: zhizu-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: zhizu123
+      MYSQL_DATABASE: rental
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pzhizu123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: zhizu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  milvus:
+    image: milvusdb/milvus:v2.4.15
+    container_name: zhizu-milvus
+    restart: unless-stopped
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    environment:
+      ETCD_USE_EMBED: "true"
+      ETCD_DATA_DIR: /var/lib/milvus/etcd
+      COMMON_STORAGETYPE: local
+    volumes:
+      - milvus-data:/var/lib/milvus
+
+volumes:
+  mysql-data:
+  redis-data:
+  milvus-data:

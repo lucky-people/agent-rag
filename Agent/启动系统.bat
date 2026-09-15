@@ -8,9 +8,10 @@ rem  mis-parsed by cmd.exe (GBK) and cause garbled-window errors.
 rem ============================================================
 cd /d "%~dp0"
 
-rem ---- Pick Python: prefer lang_env (has mcp/mysql/streamlit), fallback to system python ----
-set "PYTHON=C:\Users\31077\anaconda3\envs\lang_env\python.exe"
-if not exist "%PYTHON%" set "PYTHON=python"
+rem ---- Pick Python: ZHIZU_PYTHON env > common conda path > system python ----
+set "PYTHON=%ZHIZU_PYTHON%"
+if "%PYTHON%"=="" if exist "C:\Users\31077\anaconda3\envs\lang_env\python.exe" set "PYTHON=C:\Users\31077\anaconda3\envs\lang_env\python.exe"
+if "%PYTHON%"=="" set "PYTHON=python"
 
 echo ============================================================
 echo   Zhizu Advisor - One-click start

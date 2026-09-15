@@ -18,7 +18,10 @@ if PROJECT_ROOT not in sys.path:
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
-from python_a2a import A2AServer, run_server, AgentCard, AgentSkill, TaskStatus, TaskState
+from Agent.a2a_server.base_text2sql_server import Text2SqlAgentServer
+from python_a2a import (A2AServer, run_server, AgentCard, AgentSkill,
+                        TaskStatus, TaskState, AgentNetwork,
+                        Message, TextContent, MessageRole, Task)
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from datetime import datetime
@@ -209,157 +212,155 @@ agent_card = AgentCard(
 )
 
 # 综合推荐查询服务器类
-class RecommendQueryServer(A2AServer):
+class RecommendQueryServer(Text2SqlAgentServer):
     def __init__(self):
         super().__init__(agent_card=agent_card)
         self.llm = llm
         self.sql_prompt = sql_prompt
         self.fix_sql_prompt = fix_sql_prompt
         self.schema = table_schema_string
+        self.getter = get_recommend
+        self.formatter = format_recommend_rows
+        self.input_required_msg = "查询无效，请提供综合推荐条件。"
 
-    # 定义生成SQL查询方法，输入对话历史，返回SQL或追问JSON
-    def generate_sql_query(self, conversation: str) -> dict:
+# ============================================================
+# 编排增强（Orchestrator）：
+# 当用户查询涉及 2 个及以上子域（房源/POI/地铁）时，RecommendAgent
+# 作为编排器并行调用 House/Poi/Metro 三个子 Agent，再汇总结果。
+# 单维度查询或子 Agent 不可用时，自动降级回退到原 text2sql 路径。
+# ============================================================
+
+# 子 Agent 注册表：领域 -> (意图名, A2A地址, 汇总标题)
+SUB_AGENTS = {
+    "house":   ("HouseQueryAssistant",   "http://localhost:5006", "🏠 房源推荐"),
+    "poi":     ("PoiQueryAssistant",     "http://localhost:5007", "📍 周边景点/POI"),
+    "metro":   ("MetroQueryAssistant",   "http://localhost:5008", "🚇 地铁出行"),
+}
+
+# 多维度拆解提示词：判断用户问题涉及哪些子域，并生成对应的子查询
+split_prompt = ChatPromptTemplate.from_template(
+    """
+你是郑州租房综合推荐任务的编排拆解器。请判断用户问题涉及哪些数据域，并为每个涉及的域生成一个独立的子查询问题。
+
+可用的数据域：
+- house：房源（租金/区域/户型/面积/朝向/楼层/地铁线路）
+- poi：周边景点/公园/餐饮/医疗/住宿等POI
+- metro：地铁线路/站点/换乘
+
+输出要求：只输出 JSON，格式为：
+{{"domains": ["house"], "sub_queries": {{"house": "金水区2000元以下的整租房源"}}}}
+- domains 列出所有涉及的域（1-3个）
+- sub_queries 为每个域生成一个独立、自包含的子查询问题（不要引用其他域的结果）
+- 如果问题只涉及单一域，domains 只有一个元素
+- 如果问题与租房无关（问候、闲聊、法律），domains 为空数组
+
+用户问题: {question}
+    """
+)
+
+
+class OrchestratedRecommendQueryServer(RecommendQueryServer):
+    """综合推荐编排器：多维度查询并行调度子Agent，单维度/降级走原text2sql"""
+
+    def __init__(self):
+        super().__init__()
+        self.network = AgentNetwork(name="RecommendOrchestrator")
+        for intent_name, url, _ in SUB_AGENTS.values():
+            self.network.add(intent_name, url)
+
+    def _split_domains(self, conversation: str) -> dict:
+        """用LLM拆解用户问题为多域子查询；失败时保守回退（视为单域house）"""
         try:
-            # 组装链
-            chain = self.sql_prompt | self.llm
-            # 调用链
-            current_date = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d')  # 获取当前日期，格式化为字符串
-            output = chain.invoke({"conversation": conversation, "current_date": current_date, "table_schema_string": self.schema}).content.strip()
-            logger.info(f"原始 LLM 输出: {output}")
-
-            # 1) 优先尝试解析为 JSON（追问场景）
-            try:
-                parsed = robust_json_loads(output)
-                if isinstance(parsed, dict):
-                    return parsed
-            except Exception:
-                pass  # 非 JSON，继续按 SQL 处理
-
-            # 2) 从输出中提取纯 SQL（容忍代码围栏、"输出:"标签等杂文）
-            sql = extract_sql(output)
-            if sql:
-                return {"status": "sql", "sql": sql}
-
-            return {"status": "input_required", "message": "查询无效，请提供综合推荐条件。"}  # 返回追问JSON
+            chain = self.split_prompt | self.llm
+            out = chain.invoke({"question": conversation}).content.strip()
+            parsed = robust_json_loads(out)
+            if isinstance(parsed, dict) and isinstance(parsed.get("domains"), list):
+                domains = [d for d in parsed["domains"] if d in SUB_AGENTS]
+                sub_queries = parsed.get("sub_queries", {})
+                if domains:
+                    return {"domains": domains, "sub_queries": sub_queries}
         except Exception as e:
-            logger.error(f"SQL生成失败: {str(e)}")
-            return {"status": "input_required", "message": "查询无效，请提供综合推荐条件。"}  # 返回追问JSON
+            logger.error(f"编排拆解失败，回退单域: {str(e)}")
+        return {"domains": ["house"], "sub_queries": {"house": conversation}}
 
-    def regenerate_sql(self, conversation: str, last_sql: str, feedback: str) -> str:
-        """根据执行反馈（SQL报错/查询结果为空）让 LLM 重新生成（修正或放宽）SQL"""
+    async def _call_sub_agent(self, intent_name: str, url: str, sub_query: str, timeout: float = 20.0):
+        """调用单个子Agent，返回 (域, 文本结果)；失败返回 None"""
         try:
-            chain = self.fix_sql_prompt | self.llm
-            current_date = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d')
-            output = chain.invoke({
-                "conversation": conversation,
-                "last_sql": last_sql,
-                "feedback": feedback,
-                "table_schema_string": self.schema,
-                "current_date": current_date,
-            }).content.strip()
-            sql = extract_sql(output)
-            logger.info(f"修正/放宽后 SQL: {sql}")
-            return sql or last_sql
+            agent = self.network.get_agent(intent_name)
+            msg = Message(content=TextContent(text=sub_query), role=MessageRole.USER)
+            task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
+            raw = await asyncio.wait_for(agent.send_task_async(task), timeout=timeout)
+            # 提取文本结果
+            import re as _re
+            text_result = raw if isinstance(raw, str) else str(raw)
+            # A2A 返回可能是 dict/object，尝试取 artifacts 文本
+            if isinstance(raw, dict):
+                artifacts = raw.get("artifacts") or []
+                parts = []
+                for art in artifacts:
+                    for part in art.get("parts", []) if isinstance(art, dict) else []:
+                        if part.get("type") == "text":
+                            parts.append(part.get("text", ""))
+                text_result = "\n".join(parts) if parts else text_result
+            return {"domain": intent_name, "text": text_result.strip()}
+        except asyncio.TimeoutError:
+            logger.warning(f"子Agent {intent_name} 调用超时")
+            return None
         except Exception as e:
-            logger.error(f"SQL 修正失败: {str(e)}")
-            return last_sql
+            logger.warning(f"子Agent {intent_name} 调用失败: {str(e)}")
+            return None
 
-    # 处理任务：提取输入，生成SQL，调用MCP，格式化结果
     def handle_task(self, task):
-        # 1 提取输入
-        content = (task.message or {}).get("content", {})  # 从消息中获取内容
-        # 提取conversation，即客户端发起的任务中的query语句
+        """多维度组合查询 → 并行编排；否则降级回退原逻辑"""
+        content = (task.message or {}).get("content", {})
         conversation = content.get("text", "") if isinstance(content, dict) else ""
-        logger.info(f"对话历史及用户问题: {conversation}")
+        if not conversation.strip():
+            return super().handle_task(task)
 
+        split = self._split_domains(conversation)
+        domains = split.get("domains", [])
+        # 仅当明确涉及 2 个及以上子域才走编排；否则走原 text2sql 单域路径
+        if len(domains) < 2:
+            return super().handle_task(task)
+
+        logger.info(f"[编排] 检测到多维度查询: {domains}")
+        sub_queries = split.get("sub_queries", {})
         try:
-            # 2 基于用户问题生成SQL查询
-            gen_result = self.generate_sql_query(conversation)
-            # 检查是否需要追问，如果是则添加追问消息后返回任务
-            if gen_result["status"] == "input_required":
-                # 追问逻辑，这里是指在无法正常生成sql时，设置任务状态为输入所需，添加追问消息
-                task.status = TaskStatus(state=TaskState.INPUT_REQUIRED,
-                                         message={"role": "agent", "content": {"text": gen_result["message"]}})
-                return task
+            # 并行调用子Agent
+            async def _run_all():
+                coros = []
+                for d in domains:
+                    intent_name, url, _ = SUB_AGENTS[d]
+                    q = sub_queries.get(d, conversation)
+                    coros.append(self._call_sub_agent(intent_name, url, q))
+                results = await asyncio.gather(*coros)
+                return results
 
-            # 否则则提取SQL查询，并进行MCP调用
-            sql_query = gen_result["sql"]  #
-            logger.info(f"生成的SQL查询: {sql_query}")
+            results = asyncio.run(_run_all())
+            valid = [r for r in results if r and r.get("text")]
+            if not valid:
+                logger.warning("[编排] 子Agent全部不可用，降级回退 text2sql")
+                return super().handle_task(task)
 
-            # 3 带重试的查询循环（P1-3 执行报错自动纠错 / P1-4 空结果自动放宽条件）
-            max_attempts = 3
-            response_text = None
-            for attempt in range(1, max_attempts + 1):
-                logger.info(f"查询尝试 {attempt}/{max_attempts}: {sql_query}")
-                recommend_result = asyncio.run(get_recommend(sql_query))
-
-                # 4 格式化结果
-                response = json.loads(recommend_result) if isinstance(recommend_result, str) else recommend_result
-                logger.info(f"MCP 返回: {response}")
-                # 检查响应状态
-                if response.get("status") == "success":
-                    data = response.get("data", [])  # 提取数据列表
-                    response_text = format_recommend_rows(data)  # 格式化为美观的编号列表
-                    task.artifacts = [{"parts": [{"type": "text", "text": response_text}]}]
-                    task.status = TaskStatus(state=TaskState.COMPLETED)
-                    return task
-                elif response.get("status") == "connection_error":
-                    # 基础设施故障（MCP未启动/超时）→ 直接失败，不浪费 LLM 调用去"修正SQL"
-                    task.status = TaskStatus(state=TaskState.FAILED,
-                                             message={"role": "agent",
-                                                      "content": {"text": response.get("message", "服务暂不可用，请稍后重试。")}})
-                    return task
-                elif response.get("status") == "error":
-                    # P1-3：SQL 执行报错 → 反馈给 LLM 修正后重试
-                    if attempt < max_attempts:
-                        err_msg = response.get("message", "SQL执行错误")
-                        logger.warning(f"SQL 执行错误，尝试修正重试: {err_msg}")
-                        new_sql = self.regenerate_sql(conversation, sql_query, f"SQL执行报错：{err_msg}")
-                        if new_sql and new_sql != sql_query:
-                            sql_query = new_sql
-                            continue
-                        break
-                    task.status = TaskStatus(state=TaskState.FAILED,
-                                             message={"role": "agent", "content": {"text": f"查询失败: {response.get('message', '未知错误')}"}})
-                    return task
-                elif response.get("status") == "no_data":
-                    # P1-4：查询结果为空 → 放宽筛选条件重查
-                    if attempt < max_attempts:
-                        logger.warning("查询结果为空，尝试放宽条件重查")
-                        new_sql = self.regenerate_sql(conversation, sql_query, "查询结果为空，请放宽筛选条件（去掉过严限制、扩大范围）后重新生成一条更宽松的SQL")
-                        if new_sql and new_sql != sql_query:
-                            sql_query = new_sql
-                            continue
-                        break
-                    task.status = TaskStatus(state=TaskState.INPUT_REQUIRED,
-                                             message={"role": "agent", "content": {"text": "未找到符合条件的推荐结果，已尝试放宽条件仍无结果，请换个说法再试。"}})
-                    return task
-                else:
-                    response_text = response.get("message", "查询失败，请重试或提供更多细节。")
-                    task.status = TaskStatus(state=TaskState.FAILED,
-                                             message={"role": "agent", "content": {"text": response_text}})
-                    return task
-
-            # 重试耗尽仍未成功
-            if response_text is None:
-                response_text = "未找到符合条件的推荐结果，已尝试放宽条件仍无结果，请换个说法再试。"
-            task.status = TaskStatus(state=TaskState.INPUT_REQUIRED,
-                                     message={"role": "agent", "content": {"text": response_text}})
+            # 汇总
+            sections = []
+            for r in valid:
+                title = SUB_AGENTS.get(r["domain"], (None, None, r["domain"]))[2]
+                sections.append(f"{title}：\n{r['text']}")
+            combined = "\n\n".join(sections)
+            task.artifacts = [{"parts": [{"type": "text", "text": combined}]}]
+            task.status = TaskStatus(state=TaskState.COMPLETED)
             return task
-        except Exception as e:  # 捕获异常
-            logger.error(f"查询失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"[编排] 汇总失败，降级回退 text2sql: {str(e)}")
+            return super().handle_task(task)
 
-            # 设置任务状态为失败，添加错误信息
-            task.status = TaskStatus(state=TaskState.FAILED,
-                                     message={"role": "agent",
-                                              "content": {"text": f"查询失败: {str(e)} 请重试或提供更多细节。"}})
-            return task
 
 
 if __name__ == "__main__":
     # 创建并运行服务器
     # 实例化综合推荐查询服务器
-    recommend_server = RecommendQueryServer()
+    recommend_server = OrchestratedRecommendQueryServer()
     # 打印服务器信息
     logger.info("=== 推荐服务器信息 ===")
     logger.info(f"名称: {recommend_server.agent_card.name}")

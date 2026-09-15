@@ -1,11 +1,11 @@
 -- ============================================================
--- SmartVoyage 融合数据表结构（rental 数据库）
--- 数据来源：数据库操作 目录下的抓取脚本
---   爬虫.py            -> house_listing    （贝壳租房-郑州）
---   weather_zz.py      -> weather_forecast （和风天气-郑州15天预报）
+-- 智租顾问（Zhizu Advisor）数据库表结构（rental 数据库）
+-- 数据来源：Agent/数据库操作 目录下的抓取脚本
+--   爬虫.py            -> house_listing    （房天下-郑州租房）
 --   play.py            -> poi_data         （高德POI-郑州）
 --   fetch_metro.py     -> metro_station    （高德地铁站-郑州）
---   update_poi_metro.py.py -> 为 poi_data 补充最近地铁站关联字段
+--   update_poi_metro.py -> 为 poi_data 补充最近地铁站关联字段
+-- 示例种子数据：Agent/sql/seed_data.sql
 -- ============================================================
 
 DROP DATABASE IF EXISTS rental;
