@@ -210,13 +210,32 @@ config_local/
 
 ### 3. 初始化数据
 
-1. 执行 `Agent/sql/rental_schema.sql` 建表
+**方式一（推荐）：Docker 一键启动中间件 + 种子数据**
+
+```bash
+# 1. 一键启动 MySQL + Redis + Milvus
+docker compose up -d
+
+# 2. 导入表结构与演示种子数据（52 条房源 / 15 个地铁站 / 15 个 POI / 7 天天气）
+docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/rental_schema.sql
+docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
+```
+
+> `seed_data.sql` 为演示用示例数据（非真实房源采集），clone 后即可开箱演示；如需真实数据，运行 `Agent/数据库操作/爬虫.py` 自行采集。
+
+**方式二：手动安装中间件**
+
+1. 执行 `Agent/sql/rental_schema.sql` 建表（或直接导入 `Agent/sql/seed_data.sql` 示例数据）
 2. 运行 `Agent/数据库操作/爬虫.py` 爬取房源（或使用 `数据集/` 已有数据）
 3. 运行 `Agent/ingest_rental_laws.py` / `ingest_rental_tips.py` 构建法律知识向量库
 
 ### 4. 启动系统
 
-**方式一：一键启动** —— 双击 `Agent/启动系统.bat`（自动启动 MCP → A2A → Web）。
+**方式一：一键启动**
+
+- Windows：双击 `Agent/启动系统.bat`（自动启动 MCP → A2A → Web）
+- Linux / macOS：`./Agent/start.sh`
+- 自定义 Python 路径：`set ZHIZU_PYTHON=D:\path\to\python.exe` 后运行启动脚本
 
 **方式二：手动启动**
 
