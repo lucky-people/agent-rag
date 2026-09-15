@@ -8,7 +8,7 @@
 
 ## 🎬 演示视频
 
-[![点击观看演示视频](https://t.bilibili.com/1248156485967413250?share_source=pc_native)](https://t.bilibili.com/1248156485967413250?share_source=pc_native)
+[![点击观看演示视频](https://www.bilibili.com/video/BV1queJ6qE7f)](https://www.bilibili.com/video/BV1queJ6qE7f)
 
 > 完整演示：房源查询 → 地铁 / 周边 / 综合推荐 → 合同审查 → 收藏对比 → 流式响应
 
