@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 安装依赖（CPU 版，跳过需要外部服务的可选依赖）
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 编译检查（全部 Python 源码）
+        run: |
+          python -m compileall -q -x '(^|/)__pycache__|models' Agent
+          python -m compileall -q tests
+
+      - name: 运行单元测试（纯逻辑用例，不依赖 MySQL/Redis/Milvus）
+        run: |
+          python -m unittest discover tests -v
+
+      - name: 校验 SQL 只读白名单（安全回归）
+        run: |
+          python - <<'EOF'
+          from Agent.utils.format import validate_readonly_sql
+          # 合法查询必须放行
+          ok, sql = validate_readonly_sql("SELECT * FROM house_listing WHERE rent < 2000 LIMIT 5")
+          assert ok, "合法 SELECT 被误拦截"
+          # 写操作必须拦截
+          for bad in [
+              "INSERT INTO house_listing VALUES (1)",
+              "UPDATE house_listing SET rent=1",
+              "DELETE FROM house_listing",
+              "DROP TABLE house_listing",
+              "ALTER TABLE house_listing ADD COLUMN x INT",
+              "SELECT * FROM information_schema.tables",
+          ]:
+              ok2, _ = validate_readonly_sql(bad)
+              assert not ok2, f"危险语句未被拦截: {bad}"
+          print("SQL 只读白名单校验通过")
+          EOF

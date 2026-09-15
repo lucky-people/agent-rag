@@ -284,7 +284,9 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
         return {"domains": ["house"], "sub_queries": {"house": conversation}}
 
     async def _call_sub_agent(self, intent_name: str, url: str, sub_query: str, timeout: float = 20.0):
-        """调用单个子Agent，返回 (域, 文本结果)；失败返回 None"""
+        """调用单个子Agent，返回 (域, 文本结果, 状态, 耗时ms)；失败返回 None"""
+        import time as _t
+        _start = _t.time()
         try:
             agent = self.network.get_agent(intent_name)
             msg = Message(content=TextContent(text=sub_query), role=MessageRole.USER)
@@ -302,13 +304,14 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
                         if part.get("type") == "text":
                             parts.append(part.get("text", ""))
                 text_result = "\n".join(parts) if parts else text_result
-            return {"domain": intent_name, "text": text_result.strip()}
+            _elapsed = round((_t.time() - _start) * 1000, 1)
+            return {"domain": intent_name, "text": text_result.strip(), "status": "success", "elapsed_ms": _elapsed}
         except asyncio.TimeoutError:
             logger.warning(f"子Agent {intent_name} 调用超时")
-            return None
+            return {"domain": intent_name, "text": "", "status": "timeout", "elapsed_ms": round((_t.time() - _start) * 1000, 1)}
         except Exception as e:
             logger.warning(f"子Agent {intent_name} 调用失败: {str(e)}")
-            return None
+            return {"domain": intent_name, "text": "", "status": "error", "elapsed_ms": round((_t.time() - _start) * 1000, 1)}
 
     def handle_task(self, task):
         """多维度组合查询 → 并行编排；否则降级回退原逻辑"""
@@ -338,6 +341,21 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
 
             results = asyncio.run(_run_all())
             valid = [r for r in results if r and r.get("text")]
+            # ---- 编排可观测性：把每个子调用的域/状态/耗时写入 trace ----
+            import time as _t2
+            orchestration_trace = {
+                "type": "orchestration_trace",
+                "timestamp": _t2.strftime("%Y-%m-%d %H:%M:%S"),
+                "sub_agents": [
+                    {
+                        "domain": r.get("domain"),
+                        "title": SUB_AGENTS.get(r.get("domain"), (None, None, r.get("domain")))[2],
+                        "status": r.get("status", "success"),
+                        "elapsed_ms": r.get("elapsed_ms"),
+                        "query": sub_queries.get(r.get("domain"), conversation),
+                    } for r in results if r
+                ],
+            }
             if not valid:
                 logger.warning("[编排] 子Agent全部不可用，降级回退 text2sql")
                 return super().handle_task(task)
@@ -349,6 +367,8 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
                 sections.append(f"{title}：\n{r['text']}")
             combined = "\n\n".join(sections)
             task.artifacts = [{"parts": [{"type": "text", "text": combined}]}]
+            # 编排明细随 artifacts 返回，web_server 可解析为子节点展示
+            task.artifacts.append({"parts": [{"type": "json", "data": orchestration_trace}]})
             task.status = TaskStatus(state=TaskState.COMPLETED)
             return task
         except Exception as e:

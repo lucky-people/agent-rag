@@ -527,6 +527,42 @@ def chat_stream():
             all_responses = []
             route = "agent"
             show_house_fav = False
+
+            # ---- 并行预取：agent 类意图的子Agent调用先并发执行（法律/闲聊保持真流式不走预取）----
+            from concurrent.futures import ThreadPoolExecutor
+            _AGENT_ROUTE_NAMES = ("HouseQueryAssistant", "PoiQueryAssistant",
+                                  "MetroQueryAssistant", "RecommendQueryAssistant")
+            _prefetch_tasks = []   # (agent_name, query_str)
+            for _intent in intents:
+                _aname = conf.intent.get(_intent)
+                if _aname in _AGENT_ROUTE_NAMES:
+                    _q = user_queries.get(_intent, {})
+                    _prefetch_tasks.append((_aname, _q))
+
+            prefetched = {}
+            if _prefetch_tasks:
+                def _call_agent_worker(pair):
+                    """独立线程内调用单个子Agent（15s超时），返回 (agent_name, raw 或 None)"""
+                    _aname, _q = pair
+                    try:
+                        _agent = sess["network"].get_agent(_aname)
+                        _hist = '\n'.join(sess["history"].split("\n")[-7:-1]) + f'\nUser: {_q}'
+                        _msg = Message(content=TextContent(text=_hist), role=MessageRole.USER)
+                        _task = Task(id="task-" + str(uuid.uuid4()), message=_msg.to_dict())
+                        _raw = asyncio.run(asyncio.wait_for(_agent.send_task_async(_task), timeout=15))
+                        logger.info(f"[并行预取] {_aname} 原始响应: {str(_raw)[:200]}")
+                        return _aname, _raw
+                    except asyncio.TimeoutError:
+                        logger.warning(f"[并行预取] {_aname} 调用超时（15s）")
+                        return _aname, None
+                    except Exception as _e:
+                        logger.warning(f"[并行预取] {_aname} 调用失败: {str(_e)}")
+                        return _aname, None
+
+                with ThreadPoolExecutor(max_workers=min(len(_prefetch_tasks), 4)) as _pool:
+                    for _aname, _raw in _pool.map(_call_agent_worker, _prefetch_tasks):
+                        prefetched[_aname] = _raw
+
             for intent in intents:
                 agent_name = conf.intent.get(intent)
                 if not agent_name:
@@ -648,23 +684,30 @@ def chat_stream():
                     all_responses.append(chat_response or "抱歉，暂时没有生成回答。")
                     continue
 
-                # === 智能体路线：同步调用后分块模拟流式 ===
+                # === 智能体路线：优先取并行预取结果，未预取则同步调用（保序输出）===
                 agent_start = time.time()
-                agent = sess["network"].get_agent(agent_name)
-                chat_history = '\n'.join(sess["history"].split("\n")[-7:-1]) + f'\nUser: {query_str}'
-                msg = Message(content=TextContent(text=chat_history), role=MessageRole.USER)
-                task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
-                try:
-                    # 子Agent调用带15s超时，防止挂起无限阻塞
-                    raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=15))
-                    logger.info(f"{agent_name} 原始响应: {raw_response}")
-                    agent_result = extract_agent_result(raw_response)
-                except asyncio.TimeoutError:
-                    logger.warning(f"{agent_name} 调用超时（15s），启用降级回复")
-                    agent_result = None
-                except Exception as e:
-                    logger.warning(f"{agent_name} 调用失败，启用降级回复: {str(e)}")
-                    agent_result = None
+                if agent_name in prefetched:
+                    raw_response = prefetched[agent_name]
+                    agent_result = extract_agent_result(raw_response) if raw_response else None
+                    if raw_response is None:
+                        logger.warning(f"{agent_name} 并行预取失败（超时/异常），启用降级回复")
+                else:
+                    # 兜底：理论上不会走到（agent类已在预取阶段覆盖），保险起见同步调用
+                    agent = sess["network"].get_agent(agent_name)
+                    chat_history = '\n'.join(sess["history"].split("\n")[-7:-1]) + f'\nUser: {query_str}'
+                    msg = Message(content=TextContent(text=chat_history), role=MessageRole.USER)
+                    task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
+                    try:
+                        # 子Agent调用带15s超时，防止挂起无限阻塞
+                        raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=15))
+                        logger.info(f"{agent_name} 原始响应: {raw_response}")
+                        agent_result = extract_agent_result(raw_response)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"{agent_name} 调用超时（15s），启用降级回复")
+                        agent_result = None
+                    except Exception as e:
+                        logger.warning(f"{agent_name} 调用失败，启用降级回复: {str(e)}")
+                        agent_result = None
                 if agent_result is None or not agent_result.strip():
                     # === 降级：子Agent不可用时，用LLM生成友好兜底回复 ===
                     _degrade_prompt = (
@@ -710,6 +753,28 @@ def chat_stream():
                 add_trace_step(trace, agent_name, agent_name,
                                 input_data=query_str, output_data=final_response,
                                 start_time=agent_start)
+                # ---- 编排可观测性：展开 RecommendAgent 编排的子调用为独立 trace 节点 ----
+                if agent_name == "RecommendQueryAssistant" and raw_response is not None:
+                    try:
+                        _raw_arts = getattr(raw_response, 'artifacts', None) or []
+                        for _art in _raw_arts:
+                            for _part in (_art.get('parts', []) if isinstance(_art, dict) else []):
+                                if isinstance(_part, dict) and _part.get('type') == 'json':
+                                    _odata = _part.get('data') or {}
+                                    if isinstance(_odata, dict) and _odata.get('type') == 'orchestration_trace':
+                                        for _sub in _odata.get('sub_agents', []):
+                                            add_trace_step(
+                                                trace,
+                                                "SubAgent",
+                                                _sub.get('title') or _sub.get('domain'),
+                                                input_data=_sub.get('query', ''),
+                                                output_data="",
+                                                status="success" if _sub.get('status') == 'success' else "error",
+                                                error_msg=None if _sub.get('status') == 'success' else _sub.get('status'),
+                                                start_time=None,
+                                            )
+                    except Exception as _te:
+                        logger.error(f"编排trace解析失败: {str(_te)}")
                 all_responses.append(final_response)
                 # 分块推送（每 8 个字一个块，模拟流式效果）
                 for i in range(0, len(final_response), 8):
