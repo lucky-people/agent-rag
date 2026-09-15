@@ -67,39 +67,7 @@
 
 > **双引擎架构总览**：结构化数据查询（房源/地铁/POI）走 **A2A 多智能体 + MCP** 链路；非结构化法律知识走 **RAG 检索增强生成** 链路。两条链路由意图路由统一调度，最终经 SSE 流式返回前端。
 
-```mermaid
-graph TD
-    U["💬 用户提问"] --> I["意图识别 IntentRecognizer<br/>web_server.py · LLM 结构化输出"]
-    I --> R{"意图路由分发<br/>house / metro / poi /<br/>recommend / legal / chat"}
-
-    R -- "A2A 智能体路线" --> N["AgentNetwork<br/>python-a2a · send_task_async"]
-    N --> H["🏠 HouseAgent"]
-    N --> M["🚇 MetroAgent"]
-    N --> P["📍 PoiAgent"]
-    N --> RC["⭐ RecommendAgent<br/>多智能体协同"]
-
-    H --> MCP["MCP 工具执行层<br/>mcp_server 8004-8007"]
-    M --> MCP
-    P --> MCP
-    RC --> MCP
-
-    MCP --> DB[("MySQL rental 库<br/>house_listing · metro_station · poi_data")]
-    DB --> SUM["LLM 摘要器<br/>结构化结果 → 自然语言推荐"]
-
-    R -- "RAG 法律路线" --> L["LegalQASystem<br/>rag_qa/core/new_rag_system.py"]
-    L --> QC["QueryClassifier<br/>BERT 意图二分类"]
-    QC -- "通用知识" --> LLM1["直接 LLM 回答"]
-    QC -- "专业咨询" --> SS["StrategySelector<br/>直接 / 回溯 / 子查询 / HyDE"]
-    SS --> VS["hybrid_search_with_rerank<br/>BM25 + BGE-M3 → Milvus"]
-    VS --> RK["BGE Reranker 重排序<br/>Top-K + 法条引用"]
-    RK --> GEN["LLM 生成<br/>带法条依据的答案（含对话历史）"]
-
-    SS -. "缓存命中（快约5倍）" .-> CACHE[("Redis 缓存<br/>高频 FAQ")]
-    CACHE -.-> GEN
-
-    SUM --> OUT["SSE 流式返回 → 前端<br/>卡片渐进渲染 · 链路追踪面板"]
-    GEN --> OUT
-```
+![双引擎架构：多智能体协作 × RAG 检索增强生成](docs/images/双引擎架构.png)
 
 ### 1. 一次提问的完整处理链路
 
