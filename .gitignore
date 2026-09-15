@@ -85,8 +85,6 @@ desktop.ini
 htmlcov/
 .coverage.*
 *.cover
-实验脚本/results/
-实验脚本/data/
 
 # ========== 临时文件 ==========
 *.tmp

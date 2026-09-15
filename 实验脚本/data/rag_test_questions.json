@@ -1,0 +1,228 @@
+{
+  "description": "RAG检索策略消融实验测试集 - 租房法律问答",
+  "total": 30,
+  "categories": {
+    "押金退还": 5,
+    "合同签订": 4,
+    "提前退租": 4,
+    "维修责任": 3,
+    "房东卖房": 3,
+    "租金上涨": 2,
+    "转租": 2,
+    "违约责任": 3,
+    "居住安全": 2,
+    "中介费": 2
+  },
+  "questions": [
+    {
+      "id": 1,
+      "category": "押金退还",
+      "question": "租房到期后房东不退押金怎么办？",
+      "relevant_keywords": ["押金", "退还", "返还", "租赁合同", "违约责任"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 2,
+      "category": "押金退还",
+      "question": "房东以房屋有损坏为由扣全部押金合法吗？",
+      "relevant_keywords": ["押金", "扣除", "损坏", "正常损耗", "举证责任"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 3,
+      "category": "押金退还",
+      "question": "提前退租押金能要回来吗？",
+      "relevant_keywords": ["提前退租", "押金", "违约金", "解除合同"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 4,
+      "category": "押金退还",
+      "question": "押金和定金有什么区别？租房时交的是哪个？",
+      "relevant_keywords": ["押金", "定金", "区别", "担保", "罚则"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 5,
+      "category": "押金退还",
+      "question": "房东拖延退押金可以要求利息赔偿吗？",
+      "relevant_keywords": ["押金", "逾期退还", "利息", "赔偿", "违约责任"],
+      "difficulty": "困难"
+    },
+    {
+      "id": 6,
+      "category": "合同签订",
+      "question": "租房合同必须书面签订吗？口头约定有效吗？",
+      "relevant_keywords": ["书面合同", "口头约定", "租赁合同", "形式", "效力"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 7,
+      "category": "合同签订",
+      "question": "签租房合同需要注意哪些条款？",
+      "relevant_keywords": ["合同条款", "注意事项", "租金", "押金", "维修", "解除"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 8,
+      "category": "合同签订",
+      "question": "二房东转租的房子能签合同吗？有什么风险？",
+      "relevant_keywords": ["转租", "二房东", "合同效力", "出租人同意", "风险"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 9,
+      "category": "合同签订",
+      "question": "租房合同最长期限是多久？超过了怎么办？",
+      "relevant_keywords": ["租赁期限", "最长", "20年", "不定期租赁", "续订"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 10,
+      "category": "提前退租",
+      "question": "租客提前退租需要承担什么责任？",
+      "relevant_keywords": ["提前退租", "违约责任", "违约金", "解除合同", "赔偿损失"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 11,
+      "category": "提前退租",
+      "question": "因为工作调动必须提前退租，能减免违约金吗？",
+      "relevant_keywords": ["提前退租", "违约金", "减免", "不可抗力", "协商"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 12,
+      "category": "提前退租",
+      "question": "房东提前收回房子需要赔偿租客吗？",
+      "relevant_keywords": ["提前收回", "房东违约", "赔偿", "违约金", "搬迁费"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 13,
+      "category": "提前退租",
+      "question": "什么情况下租客可以无条件解除租赁合同？",
+      "relevant_keywords": ["解除合同", "法定解除", "无条件", "租赁物瑕疵", "安全隐患"],
+      "difficulty": "困难"
+    },
+    {
+      "id": 14,
+      "category": "维修责任",
+      "question": "租房期间家电坏了谁负责维修？",
+      "relevant_keywords": ["维修", "家电", "损坏", "出租人", "承租人", "责任"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 15,
+      "category": "维修责任",
+      "question": "房东不修东西租客可以自行维修然后扣房租吗？",
+      "relevant_keywords": ["维修", "出租人义务", "自行维修", "租金抵扣", "催告"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 16,
+      "category": "维修责任",
+      "question": "房屋漏水导致租客物品损坏，房东要赔偿吗？",
+      "relevant_keywords": ["漏水", "损坏", "赔偿", "出租人责任", "过错"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 17,
+      "category": "房东卖房",
+      "question": "房东卖房后新房东能赶走租客吗？",
+      "relevant_keywords": ["买卖不破租赁", "卖房", "新房东", "租赁合同", "继续履行"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 18,
+      "category": "房东卖房",
+      "question": "租客有优先购买权吗？怎么行使？",
+      "relevant_keywords": ["优先购买权", "承租人", "卖房", "同等条件", "通知"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 19,
+      "category": "房东卖房",
+      "question": "房东没通知租客就把房子卖了，租客能主张什么权利？",
+      "relevant_keywords": ["优先购买权", "通知义务", "赔偿", "买卖合同", "撤销"],
+      "difficulty": "困难"
+    },
+    {
+      "id": 20,
+      "category": "租金上涨",
+      "question": "合同期内房东能涨房租吗？",
+      "relevant_keywords": ["租金", "上涨", "合同期内", "变更合同", "协商一致"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 21,
+      "category": "租金上涨",
+      "question": "合同到期后续租房东漫天涨价怎么办？",
+      "relevant_keywords": ["续租", "租金上涨", "协商", "优先承租权", "市场价格"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 22,
+      "category": "转租",
+      "question": "租客可以把房子转租给别人吗？",
+      "relevant_keywords": ["转租", "出租人同意", "合同约定", "擅自转租", "解除"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 23,
+      "category": "转租",
+      "question": "未经房东同意转租会有什么后果？",
+      "relevant_keywords": ["擅自转租", "解除合同", "违约责任", "次承租人", "返还"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 24,
+      "category": "违约责任",
+      "question": "租房合同违约金一般是多少？过高能要求减少吗？",
+      "relevant_keywords": ["违约金", "数额", "过高", "调整", "实际损失"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 25,
+      "category": "违约责任",
+      "question": "租客拖欠房租多久房东可以解除合同？",
+      "relevant_keywords": ["拖欠租金", "解除合同", "催告", "合理期限", "法定解除"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 26,
+      "category": "违约责任",
+      "question": "合同没写违约金，一方违约了能要求赔偿吗？",
+      "relevant_keywords": ["违约金", "未约定", "赔偿损失", "实际损失", "违约责任"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 27,
+      "category": "居住安全",
+      "question": "出租房甲醛超标租客可以要求退房并赔偿吗？",
+      "relevant_keywords": ["甲醛", "超标", "空气质量", "解除合同", "赔偿", "健康损害"],
+      "difficulty": "中等"
+    },
+    {
+      "id": 28,
+      "category": "居住安全",
+      "question": "出租房发生火灾，责任谁承担？",
+      "relevant_keywords": ["火灾", "责任", "过错", "消防", "电器", "赔偿"],
+      "difficulty": "困难"
+    },
+    {
+      "id": 29,
+      "category": "中介费",
+      "question": "租房中介费一般谁出？没租成还要付中介费吗？",
+      "relevant_keywords": ["中介费", "承担", "居间合同", "未促成", "报酬"],
+      "difficulty": "简单"
+    },
+    {
+      "id": 30,
+      "category": "中介费",
+      "question": "中介隐瞒房屋真实情况，租客能要求退中介费吗？",
+      "relevant_keywords": ["中介", "隐瞒", "如实报告", "欺诈", "退还", "赔偿"],
+      "difficulty": "中等"
+    }
+  ]
+}
