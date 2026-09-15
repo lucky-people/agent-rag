@@ -9,7 +9,7 @@ import os
 import sys
 import json
 import asyncio
-import re
+import uuid
 
 # 路径配置：把项目根目录加入 sys.path，支持 from Agent.xxx import 绝对路径导入
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,17 +19,15 @@ if PROJECT_ROOT not in sys.path:
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from Agent.a2a_server.base_text2sql_server import Text2SqlAgentServer
-from python_a2a import (A2AServer, run_server, AgentCard, AgentSkill,
+from python_a2a import (run_server, AgentCard, AgentSkill,
                         TaskStatus, TaskState, AgentNetwork,
                         Message, TextContent, MessageRole, Task)
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from datetime import datetime
-import pytz
 
 from Agent.config import Config
 from Agent.create_logger import logger
-from Agent.utils.format import format_exception, robust_json_loads, extract_sql
+from Agent.utils.format import format_exception, robust_json_loads
 
 conf = Config()
 
@@ -149,7 +147,7 @@ async def get_recommend(sql):
     try:
         return await asyncio.wait_for(_call(), timeout=15)
     except asyncio.TimeoutError:
-        logger.error(f"综合推荐 MCP 调用超时（15s）")
+        logger.error("综合推荐 MCP 调用超时（15s）")
         return {"status": "connection_error", "message": "综合推荐 服务响应超时，请稍后重试。"}
     except Exception as e:
         err_msg = format_exception(e)
@@ -293,7 +291,6 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
             task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
             raw = await asyncio.wait_for(agent.send_task_async(task), timeout=timeout)
             # 提取文本结果
-            import re as _re
             text_result = raw if isinstance(raw, str) else str(raw)
             # A2A 返回可能是 dict/object，尝试取 artifacts 文本
             if isinstance(raw, dict):

@@ -1,8 +1,6 @@
-from tqdm import tqdm
-import time
 from PIL import Image
 from io import BytesIO
-from edu_ocr import *
+from edu_ocr import get_ocr
 import numpy as np
 ocr = get_ocr()
 
@@ -52,7 +50,7 @@ def ppt2text(filepath):
                     resp += "\n".join(ocr_result)
                 print(f'resp222--》{resp}')
             elif shape.shape_type == 6:  # 6 表示组合
-                print(f'da')
+                print('da')
         print('*'*80)
 if __name__ == '__main__':
     ppt2text(filepath='/Users/ligang/PycharmProjects/LLM/EducationRAG/data/01.pptx')

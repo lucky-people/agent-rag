@@ -138,9 +138,9 @@ macro_f1 = sum(m["f1"] for m in metrics.values()) / len(labels)
 
 # 加权平均
 total = len(y_true)
-weighted_p = sum(metrics[l]["precision"] * label_counts.get(l, 0) for l in labels) / total
-weighted_r = sum(metrics[l]["recall"] * label_counts.get(l, 0) for l in labels) / total
-weighted_f1 = sum(metrics[l]["f1"] * label_counts.get(l, 0) for l in labels) / total
+weighted_p = sum(metrics[label]["precision"] * label_counts.get(label, 0) for label in labels) / total
+weighted_r = sum(metrics[label]["recall"] * label_counts.get(label, 0) for label in labels) / total
+weighted_f1 = sum(metrics[label]["f1"] * label_counts.get(label, 0) for label in labels) / total
 
 print(f"  准确率(Accuracy): {accuracy:.4f}")
 for label in labels:
@@ -183,7 +183,7 @@ with open(report_path, "w", encoding="utf-8") as f:
 
     f.write("四、混淆矩阵\n")
     f.write("-" * 40 + "\n")
-    f.write(f"  {'真实\\预测':<14}")
+    f.write(f"  {'真实' + chr(92) + '预测':<14}")
     for p in labels:
         f.write(f"{p:<14}")
     f.write("\n")
@@ -285,9 +285,9 @@ try:
     # 指标对比柱状图
     x = np.arange(len(labels))
     width = 0.25
-    precisions = [metrics[l]["precision"] for l in labels]
-    recalls = [metrics[l]["recall"] for l in labels]
-    f1s = [metrics[l]["f1"] for l in labels]
+    precisions = [metrics[label]["precision"] for label in labels]
+    recalls = [metrics[label]["recall"] for label in labels]
+    f1s = [metrics[label]["f1"] for label in labels]
 
     axes[1].bar(x - width, precisions, width, label="Precision", color="#42a5f5")
     axes[1].bar(x, recalls, width, label="Recall", color="#66bb6a")

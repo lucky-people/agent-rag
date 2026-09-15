@@ -237,7 +237,7 @@ def get_favorites(user_id, item_type=None):
         for row in rows:
             try:
                 data = json.loads(row["item_data"]) if row["item_data"] else {}
-            except:
+            except Exception:
                 data = {}
             result.append({
                 "id": row["id"],

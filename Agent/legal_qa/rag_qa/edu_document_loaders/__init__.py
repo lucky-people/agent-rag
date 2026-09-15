@@ -9,21 +9,21 @@ sys.path.append(Config().EDU_DOCUMENT_LOADERS_DIR)
 
 # 条件导入各个文档加载器，允许在缺少依赖时继续运行
 try:
-    from .edu_docloader import *
+    from .edu_docloader import *  # noqa: F403
 except ImportError:
     pass
 
 try:
-    from .edu_pptloader import *
+    from .edu_pptloader import *  # noqa: F403
 except ImportError:
     pass
 
 try:
-    from .edu_imgloader import *
+    from .edu_imgloader import *  # noqa: F403
 except ImportError:
     pass
 
 try:
-    from .edu_pdfloader import *
+    from .edu_pdfloader import *  # noqa: F403
 except ImportError:
     pass

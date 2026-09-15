@@ -1,4 +1,3 @@
-from typing import TYPE_CHECKING
 '''
 paddleocr：解析图片中的文字，也可以进行表格识别
 rapidocr_paddle 和 rapidocr_onnxruntime 两种导入方式
@@ -11,7 +10,7 @@ rapidocr_paddle 和 rapidocr_onnxruntime 两种导入方式
 注意: OCR不是万能的, 如果比较模糊的图片, 它识别效果也不是特别OK, 可以借助一些多模态大模型来处理. 
 '''
 
-def get_ocr(use_cuda: bool = True) -> "RapidOCR":
+def get_ocr(use_cuda: bool = True) -> "RapidOCR":  # noqa: F821
     try:
         from rapidocr_paddle import RapidOCR
         '''

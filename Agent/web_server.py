@@ -667,7 +667,7 @@ def chat_stream():
                             asyncio.run(_run())
                         except Exception as e:
                             logger.error(f"闲聊流式输出异常: {str(e)}")
-                            _evt_q.put(f'data: {{"type":"token","content":"（回答中断，请重试）"}}\n\n')
+                            _evt_q.put('data: {"type":"token","content":"（回答中断，请重试）"}\n\n')
                         finally:
                             _evt_q.put(None)   # 结束哨兵
 
@@ -970,7 +970,7 @@ def contract_review():
         # 清理临时文件
         try:
             os.remove(file_path)
-        except:
+        except Exception:
             pass
 
 
