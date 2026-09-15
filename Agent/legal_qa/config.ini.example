@@ -1,0 +1,50 @@
+# ======================================================
+# 项目配置文件模板
+# 使用方法：复制本文件为 config.ini，并填入你自己的密钥
+#   cp config.ini.example config.ini
+# 或在环境变量中设置：DASHSCOPE_API_KEY / MYSQL_PASSWORD / REDIS_PASSWORD
+# ======================================================
+
+# MySQL 配置
+[mysql]
+host = localhost
+user = root
+password = YOUR_MYSQL_PASSWORD
+database = laws_all
+
+# Redis 配置
+[redis]
+host = localhost
+port = 6379
+password = YOUR_REDIS_PASSWORD
+db = 0
+
+# 日志配置
+[logger]
+log_file = logs/app.log
+
+# Milvus 配置
+[milvus]
+host = localhost
+port = 19530
+database_name = laws_all
+collection_name = edurag_final
+
+# LLM 配置（请填写你自己的 DashScope API Key）
+[llm]
+model = qwen3.8-max
+dashscope_api_key = YOUR_DASHSCOPE_API_KEY
+dashscope_base_url = https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# 检索参数配置
+[retrieval]
+parent_chunk_size = 1200
+child_chunk_size = 300
+chunk_overlap = 50
+retrieval_k = 3
+candidate_m = 2
+
+# 应用配置
+[app]
+valid_sources = ['刑法','劳动法','民事诉讼法','民法典']
+customer_service_phone = 12345678

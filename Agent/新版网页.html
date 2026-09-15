@@ -1,0 +1,3091 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+    <title>智租顾问 · 智能租房法律助手</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(-45deg, #e8f0fe, #f0f4ff, #e3ecf8, #eef5ff, #f5f0ff);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+            color: #2c3e50;
+            overflow-x: hidden;
+            position: relative;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        /* 浮动装饰圆 */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .bg-orb.o1 { width: 420px; height: 420px; top: -8%; right: -5%; background: rgba(25,118,210,0.12); animation: float1 18s ease-in-out infinite; }
+        .bg-orb.o2 { width: 350px; height: 350px; bottom: -10%; left: -5%; background: rgba(123,31,162,0.08); animation: float2 22s ease-in-out infinite; }
+        .bg-orb.o3 { width: 280px; height: 280px; top: 40%; left: 60%; background: rgba(67,160,71,0.07); animation: float3 16s ease-in-out infinite; }
+        .bg-orb.o4 { width: 200px; height: 200px; top: 15%; left: 10%; background: rgba(255,152,0,0.06); animation: float1 20s ease-in-out infinite reverse; }
+        @keyframes float1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-40px) scale(1.1); } }
+        @keyframes float2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-40px,30px) scale(1.15); } }
+        @keyframes float3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,50px) scale(0.9); } }
+        .app-container {
+            max-width: 1440px;
+            width: 100%;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 1.8rem;
+            padding: 1.5rem 1.8rem 1.5rem;
+            box-shadow: 0 20px 60px rgba(25,118,210,0.12), 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.6);
+            animation: containerIn 0.6s ease;
+        }
+        @keyframes containerIn { from { opacity:0; transform: translateY(20px) scale(0.98); } to { opacity:1; transform: translateY(0) scale(1); } }
+        /* 头部 */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem 0.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(25,118,210,0.1);
+        }
+        .logo-area { display: flex; align-items: center; gap: 0.85rem; }
+        .logo-icon {
+            font-size: 2.4rem;
+            background: linear-gradient(135deg, #1976D2, #42a5f5, #7c4dff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 4px 10px rgba(25,118,210,0.3));
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+        @keyframes logoGlow {
+            0%,100% { filter: drop-shadow(0 4px 10px rgba(25,118,210,0.3)); }
+            50% { filter: drop-shadow(0 4px 18px rgba(25,118,210,0.5)); }
+        }
+        .logo-text {
+            font-weight: 800;
+            font-size: 1.85rem;
+            background: linear-gradient(135deg, #1a2332 0%, #1976D2 50%, #7c4dff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+        .logo-sub {
+            font-size: 0.8rem;
+            color: #78909c;
+            margin-top: 3px;
+            font-weight: 500;
+        }
+        .badge-system {
+            background: linear-gradient(135deg, rgba(227,242,253,0.9), rgba(187,222,251,0.7));
+            padding: 0.55rem 1.3rem;
+            border-radius: 60px;
+            border: 1px solid rgba(25,118,210,0.2);
+            font-size: 0.8rem;
+            color: #1565c0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(25,118,210,0.1);
+        }
+        .badge-system i { color: #1976D2; }
+        .status-dot {
+            width: 8px; height: 8px;
+            background: #4caf50;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px rgba(76,175,80,0.6);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+        @keyframes statusPulse { 0%,100% { box-shadow: 0 0 8px rgba(76,175,80,0.6); } 50% { box-shadow: 0 0 14px rgba(76,175,80,0.9); } }
+        /* 两栏布局 */
+        .two-columns {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+        /* 左侧对话区 */
+        .chat-panel {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 1.4rem;
+            padding: 1.2rem 1.2rem 0.5rem;
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 20px rgba(25,118,210,0.06);
+            display: flex;
+            flex-direction: column;
+            min-height: 580px;
+        }
+        .chat-panel h2 {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #37474f;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-panel h2 i {
+            background: linear-gradient(135deg, #1976D2, #42a5f5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 480px;
+            padding-right: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            scroll-behavior: smooth;
+        }
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #90caf9, #1976D2); border-radius: 12px; }
+        /* 消息气泡 */
+        .msg-wrapper {
+            display: flex;
+            flex-direction: column;
+            max-width: 92%;
+            animation: msgSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+            opacity: 0;
+        }
+        @keyframes msgSlideIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .msg-wrapper.user { align-self: flex-end; align-items: flex-end; }
+        .msg-wrapper.assistant { align-self: flex-start; align-items: flex-start; }
+        /* Markdown 标题（替代 # 号，带表情图标） */
+        .md-h1 {
+            font-size: 1.06rem; font-weight: 700; color: #1565c0;
+            margin: 12px 0 6px; padding-bottom: 6px;
+            border-bottom: 1px solid rgba(25,118,210,0.15);
+        }
+        .md-h2 { font-size: 0.98rem; font-weight: 600; color: #1976D2; margin: 10px 0 4px; }
+        .md-h3 { font-size: 0.92rem; font-weight: 600; color: #455a64; margin: 8px 0 4px; }
+        .bubble {
+            padding: 0.9rem 1.25rem;
+            border-radius: 18px;
+            font-size: 0.93rem;
+            line-height: 1.75;
+            word-break: break-word;
+            white-space: pre-wrap;
+            position: relative;
+        }
+        .msg-wrapper.user .bubble {
+            background: linear-gradient(135deg, #1976D2 0%, #1565c0 50%, #0d47a1 100%);
+            color: #fff;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 6px 18px rgba(25,118,210,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .msg-wrapper.assistant .bubble {
+            background: rgba(255,255,255,0.9);
+            color: #2c3e50;
+            border: 1px solid rgba(227,234,242,0.8);
+            border-left: 3px solid #1976D2;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9);
+        }
+        .msg-wrapper.assistant.legal .bubble {
+            border-left-color: #7b1fa2;
+            background: linear-gradient(135deg, rgba(253,248,255,0.95), rgba(255,255,255,0.9));
+        }
+        .route-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .route-tag.agent { background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0; }
+        .route-tag.legal { background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #7b1fa2; }
+        .route-tag.chat { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32; }
+
+        /* ==================== 智能体协作链路追踪面板 ==================== */
+        .trace-panel {
+            margin-top: 10px;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f8fbff 0%, #eef5fc 100%);
+            overflow: hidden;
+            animation: traceSlideIn 0.4s ease;
+        }
+        @keyframes traceSlideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .trace-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .trace-header:hover { background: linear-gradient(135deg, #1e88e5 0%, #1976d2 100%); }
+        .trace-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .trace-header-left i { font-size: 0.85rem; }
+        .trace-stats {
+            font-size: 0.65rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        .trace-toggle {
+            font-size: 0.7rem;
+            transition: transform 0.3s ease;
+        }
+        .trace-panel.collapsed .trace-toggle { transform: rotate(-90deg); }
+        .trace-panel.collapsed .trace-body { display: none; }
+        .trace-body {
+            padding: 12px 14px;
+        }
+        .trace-timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+        .trace-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 6px;
+            bottom: 6px;
+            width: 2px;
+            background: linear-gradient(180deg, #1976D2, #64b5f6, #bbdefb);
+        }
+        .trace-step {
+            position: relative;
+            margin-bottom: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #e0e8f0;
+            transition: all 0.2s ease;
+        }
+        .trace-step:hover {
+            border-color: #90caf9;
+            box-shadow: 0 2px 8px rgba(25,118,210,0.12);
+            transform: translateX(2px);
+        }
+        .trace-step:last-child { margin-bottom: 0; }
+        .trace-step::before {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #1976D2;
+            z-index: 1;
+        }
+        .trace-step.error::before { border-color: #e53935; background: #ffebee; }
+        .trace-step-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .trace-step-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #37474f;
+        }
+        .trace-step-icon {
+            font-size: 0.85rem;
+        }
+        .trace-step-duration {
+            font-size: 0.65rem;
+            color: #78909c;
+            font-weight: 500;
+            background: #f0f4f8;
+            padding: 2px 7px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        .trace-step.error .trace-step-duration { background: #ffebee; color: #e53935; }
+        .trace-step-detail {
+            margin-top: 6px;
+            font-size: 0.68rem;
+            color: #607d8b;
+            line-height: 1.5;
+        }
+        .trace-step-detail-label {
+            font-weight: 600;
+            color: #455a64;
+            margin-right: 4px;
+        }
+        .trace-step-detail-content {
+            color: #78909c;
+            word-break: break-all;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .trace-step-detail-content.expanded {
+            -webkit-line-clamp: unset;
+        }
+        .trace-expand-btn {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 0.62rem;
+            color: #1976D2;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .trace-footer {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #cfd8dc;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #78909c;
+        }
+        .trace-footer-total {
+            font-weight: 600;
+            color: #1976D2;
+        }
+        .trace-status-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+        .trace-status-badge.success { background: #e8f5e9; color: #2e7d32; }
+        .trace-status-badge.error { background: #ffebee; color: #c62828; }
+
+        /* ==================== 思考过程展示（流式步骤动画） ==================== */
+        .thinking-panel {
+            margin: 6px 0;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #f5f9ff 0%, #eef5fc 100%);
+            border: 1px solid #d0e3f7;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            color: #546e7a;
+            animation: thinkingFadeIn 0.3s ease;
+        }
+        @keyframes thinkingFadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .thinking-panel.done {
+            background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
+            border-color: #c5e1a5;
+        }
+        .thinking-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #1976D2;
+            margin-bottom: 6px;
+        }
+        .thinking-title i {
+            font-size: 0.75rem;
+        }
+        .thinking-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #bbdefb;
+            border-top-color: #1976D2;
+            border-radius: 50%;
+            animation: thinkingSpin 0.8s linear infinite;
+        }
+        @keyframes thinkingSpin {
+            to { transform: rotate(360deg); }
+        }
+        .thinking-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .thinking-step {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: #fff;
+            border: 1px solid #cfd8dc;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            color: #78909c;
+            transition: all 0.3s ease;
+        }
+        .thinking-step.running {
+            border-color: #1976D2;
+            color: #1976D2;
+            background: #e3f2fd;
+            box-shadow: 0 0 0 3px rgba(25,118,210,0.1);
+        }
+        .thinking-step.done {
+            border-color: #66bb6a;
+            color: #2e7d32;
+            background: #e8f5e9;
+        }
+        .thinking-step.done i { color: #66bb6a; }
+        .thinking-step-icon {
+            font-size: 0.65rem;
+        }
+        .thinking-arrow {
+            color: #b0bec5;
+            font-size: 0.6rem;
+        }
+        .thinking-panel.done .thinking-spinner { display: none; }
+        .thinking-panel.done .thinking-title { color: #2e7d32; }
+
+        /* 房源卡片渐进式渲染动画 */
+        .house-card.progressive {
+            animation: cardSlideIn 0.4s ease;
+        }
+        @keyframes cardSlideIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .msg-meta {
+            font-size: 0.65rem;
+            color: #90a4ae;
+            margin-top: 5px;
+            padding: 0 6px;
+            font-weight: 500;
+        }
+        /* 推荐问题 */
+        .suggestion-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 6px 0;
+            padding: 0 4px;
+            animation: msgSlideIn 0.4s ease;
+        }
+        .suggestion-chip {
+            background: rgba(255,255,255,0.8);
+            border: 1px solid #c5d5e5;
+            color: #455a64;
+            border-radius: 40px;
+            padding: 0.45rem 1rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+            font-family: inherit;
+            font-weight: 500;
+        }
+        .suggestion-chip:hover {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-color: #1976D2;
+            color: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25,118,210,0.2);
+        }
+        /* 输入区 */
+        .input-area {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50px;
+            padding: 0.35rem 0.35rem 0.35rem 1.5rem;
+            border: 2px solid rgba(208,220,232,0.6);
+            transition: all 0.3s;
+            box-shadow: 0 2px 12px rgba(25,118,210,0.06);
+        }
+        .input-area:focus-within {
+            border-color: #1976D2;
+            box-shadow: 0 0 0 4px rgba(25,118,210,0.12), 0 4px 20px rgba(25,118,210,0.15);
+            background: #fff;
+        }
+        .input-area input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 0.85rem 0.2rem;
+            font-size: 0.93rem;
+            color: #2c3e50;
+            outline: none;
+            min-width: 0;
+        }
+        .input-area input::placeholder { color: #90a4ae; }
+        .input-area button {
+            background: linear-gradient(135deg, #1976D2, #1565c0, #0d47a1);
+            background-size: 200% 200%;
+            border: none;
+            color: #fff;
+            padding: 0.75rem 1.6rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 14px rgba(25,118,210,0.3);
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+        .input-area button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        /* 语音输入按钮 */
+        #micBtn {
+            background: linear-gradient(135deg, #1976D2, #1565c0, #0d47a1);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            width: 42px;
+            height: 42px;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        #micBtn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(25,118,210,0.3); }
+        #micBtn.recording {
+            background: linear-gradient(135deg, #e53935, #c62828);
+            animation: micPulse 1.2s infinite;
+        }
+        @keyframes micPulse {
+            0% { box-shadow: 0 0 0 0 rgba(229,57,53,0.45); }
+            100% { box-shadow: 0 0 0 10px rgba(229,57,53,0); }
+        }
+        .input-area button:hover::before { left: 100%; }
+        .input-area button:hover {
+            transform: scale(1.04);
+            box-shadow: 0 6px 20px rgba(25,118,210,0.4);
+            background-position: 100% 50%;
+        }
+        .input-area button:active { transform: scale(0.97); }
+        /* 加载状态 */
+        .thinking-bubble {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #78909c;
+            font-size: 0.88rem;
+        }
+        .thinking-bubble i { color: #1976D2; }
+        /* 思考进度条卡片 */
+        .thinking-card {
+            background: rgba(255,255,255,0.95);
+            border: 1px solid rgba(227,242,253,0.9);
+            border-radius: 16px;
+            padding: 18px 22px;
+            max-width: 420px;
+            box-shadow: 0 8px 28px rgba(25,118,210,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+            animation: thinkingPulse 2s ease-in-out infinite;
+        }
+        @keyframes thinkingPulse { 0%,100% { box-shadow: 0 8px 28px rgba(25,118,210,0.12); } 50% { box-shadow: 0 8px 36px rgba(25,118,210,0.2); } }
+        .thinking-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .thinking-header i {
+            color: #1976D2;
+            font-size: 1.05rem;
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .thinking-header .thinking-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #37474f;
+        }
+        .thinking-header .thinking-stage {
+            font-size: 0.8rem;
+            color: #1976D2;
+            margin-left: auto;
+            font-weight: 600;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 3px 10px;
+            border-radius: 12px;
+        }
+        .thinking-progress-track {
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #e3f2fd, #e8eaf6);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .thinking-progress-bar {
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, #42a5f5, #1976D2, #7c4dff, #42a5f5);
+            background-size: 300% 100%;
+            border-radius: 4px;
+            animation: thinkingFlow 1.8s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(25,118,210,0.4);
+        }
+        @keyframes thinkingFlow {
+            0% { transform: translateX(-120%); background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { transform: translateX(350%); background-position: 0% 50%; }
+        }
+        .thinking-steps {
+            display: flex;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #90a4ae;
+        }
+        .thinking-step {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(245,247,250,0.8);
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .thinking-step.active {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            color: #1565c0;
+            font-weight: 600;
+            transform: scale(1.05);
+        }
+        .thinking-step.done {
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            color: #2e7d32;
+        }
+        .thinking-step .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .thinking-step.active .dot {
+            animation: dot-pulse 1s ease-in-out infinite;
+        }
+        @keyframes dot-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.6); }
+        }
+        /* 引用条文区域 */
+        .references-box {
+            margin-top: 14px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, rgba(245,249,255,0.95) 0%, rgba(238,245,255,0.9) 100%);
+            border-left: 4px solid #1976D2;
+            border-radius: 0 12px 12px 0;
+            font-size: 0.82rem;
+            box-shadow: 0 2px 10px rgba(25,118,210,0.08);
+            animation: msgSlideIn 0.4s ease;
+        }
+        .references-box .ref-title {
+            font-weight: 700;
+            color: #1565c0;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+        }
+        .references-box .ref-item {
+            margin-bottom: 10px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 10px;
+            border: 1px solid rgba(227,242,253,0.8);
+            transition: all 0.25s;
+        }
+        .references-box .ref-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 2px 10px rgba(25,118,210,0.1);
+        }
+        .references-box .ref-item:last-child { margin-bottom: 0; }
+        .references-box .ref-law {
+            font-weight: 700;
+            color: #1976D2;
+            font-size: 0.86rem;
+        }
+        .references-box .ref-article {
+            color: #e65100;
+            font-weight: 600;
+            margin-left: 8px;
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.76rem;
+        }
+        .references-box .ref-snippet {
+            color: #455a64;
+            margin-top: 7px;
+            line-height: 1.65;
+            font-size: 0.8rem;
+        }
+        /* 右侧能力卡片 */
+        .agent-panel {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 1.4rem;
+            padding: 1.2rem 1rem 0.8rem;
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 20px rgba(25,118,210,0.06);
+            max-height: 620px;
+            overflow-y: auto;
+        }
+        .agent-panel h2 {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #37474f;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .agent-panel h2 i {
+            background: linear-gradient(135deg, #1976D2, #7c4dff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .agent-card {
+            background: rgba(255,255,255,0.85);
+            border-radius: 1.1rem;
+            padding: 1rem 1.1rem;
+            margin-bottom: 0.85rem;
+            border: 1px solid rgba(232,238,245,0.8);
+            transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative;
+            overflow: hidden;
+        }
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(25,118,210,0.03), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .agent-card:hover {
+            border-color: rgba(25,118,210,0.3);
+            box-shadow: 0 8px 24px rgba(25,118,210,0.12);
+            transform: translateY(-3px) scale(1.01);
+        }
+        .agent-card:hover::before { opacity: 1; }
+        .agent-card.legal { border-left: 3px solid #7b1fa2; }
+        .agent-card.legal:hover { border-color: rgba(123,31,162,0.4); box-shadow: 0 8px 24px rgba(123,31,162,0.12); }
+        .agent-card.chat { border-left: 3px solid #43a047; }
+        .agent-card.chat:hover { border-color: rgba(67,160,71,0.4); box-shadow: 0 8px 24px rgba(67,160,71,0.12); }
+        .agent-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #263238;
+            margin-bottom: 0.55rem;
+            position: relative;
+            z-index: 1;
+        }
+        .agent-name i { font-size: 0.9rem; }
+        .agent-name i.blue { color: #1976D2; }
+        .agent-name i.purple { color: #7b1fa2; }
+        .agent-name i.green { color: #43a047; }
+        .agent-detail {
+            font-size: 0.78rem;
+            color: #607d8b;
+            line-height: 1.65;
+            position: relative;
+            z-index: 1;
+        }
+        .agent-detail strong {
+            color: #455a64;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 40px;
+        }
+        .agent-status {
+            display: inline-block;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            padding: 2px 9px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-left: auto;
+        }
+        /* 页脚 */
+        .footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #90a4ae;
+            border-top: 1px solid rgba(25,118,210,0.08);
+            padding-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-weight: 500;
+        }
+        .footer i { color: #90a4ae; margin-right: 4px; }
+        /* 用户系统 */
+        .user-area { display: flex; align-items: center; gap: 8px; }
+        .user-login-btn {
+            background: linear-gradient(135deg, #1976D2, #1565C0);
+            color: #fff; border: none; padding: 0.5rem 1.1rem;
+            border-radius: 50px; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(25,118,210,0.25);
+        }
+        .user-login-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 16px rgba(25,118,210,0.35); }
+        .user-info { display: flex; align-items: center; gap: 8px; }
+        .user-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #1976D2, #7c4dff);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.95rem;
+            box-shadow: 0 2px 8px rgba(25,118,210,0.3);
+        }
+        .user-name { font-size: 0.88rem; font-weight: 600; color: #37474f; }
+        .user-center-btn {
+            background: #f0f4f8; border: none; width: 32px; height: 32px;
+            border-radius: 50%; cursor: pointer; color: #546e7a;
+            transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+        }
+        .user-center-btn:hover { background: #e3f2fd; color: #1976D2; transform: rotate(45deg); }
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px); animation: fadeIn 0.2s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-box {
+            background: #fff; border-radius: 18px; padding: 2rem;
+            width: 380px; max-width: 90vw; position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            animation: modalSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        @keyframes modalSlideIn { from { transform: translateY(-30px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        .modal-close {
+            position: absolute; top: 12px; right: 16px;
+            background: none; border: none; font-size: 1.5rem;
+            color: #90a4ae; cursor: pointer; transition: color 0.2s;
+        }
+        .modal-close:hover { color: #e53935; }
+        .auth-tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #eef2f7; }
+        .auth-tab {
+            flex: 1; background: none; border: none; padding: 0.7rem;
+            font-size: 0.95rem; font-weight: 600; color: #90a4ae;
+            cursor: pointer; transition: all 0.3s; border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        .auth-tab.active { color: #1976D2; border-bottom-color: #1976D2; }
+        .auth-form input {
+            width: 100%; padding: 0.75rem 1rem; margin-bottom: 0.8rem;
+            border: 1.5px solid #e0e8f0; border-radius: 10px;
+            font-size: 0.9rem; transition: all 0.3s; box-sizing: border-box;
+        }
+        .auth-form input:focus { outline: none; border-color: #1976D2; box-shadow: 0 0 0 3px rgba(25,118,210,0.1); }
+        .auth-submit {
+            width: 100%; padding: 0.8rem; background: linear-gradient(135deg, #1976D2, #1565C0);
+            color: #fff; border: none; border-radius: 10px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; box-shadow: 0 4px 12px rgba(25,118,210,0.25);
+        }
+        .auth-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(25,118,210,0.35); }
+        .auth-error { color: #e53935; font-size: 0.82rem; margin-top: 0.5rem; min-height: 1.2rem; }
+        /* 用户中心侧边栏 */
+        .user-center-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+            z-index: 998; backdrop-filter: blur(2px);
+        }
+        .user-center-panel {
+            position: fixed; top: 0; right: -420px; width: 400px; max-width: 90vw;
+            height: 100vh; background: #fff; z-index: 999;
+            box-shadow: -8px 0 30px rgba(0,0,0,0.12);
+            transition: right 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            display: flex; flex-direction: column;
+        }
+        .user-center-panel.open { right: 0; }
+        .user-center-header {
+            padding: 1.2rem 1.5rem; border-bottom: 1px solid #eef2f7;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, #f5f9ff, #fff);
+        }
+        .user-center-header h3 { margin: 0; font-size: 1.1rem; color: #1976D2; }
+        .user-center-close {
+            background: none; border: none; font-size: 1.4rem;
+            color: #90a4ae; cursor: pointer; transition: color 0.2s;
+        }
+        .user-center-close:hover { color: #e53935; }
+        .user-center-body { flex: 1; overflow-y: auto; padding: 1.2rem 1.5rem; }
+        .uc-section { margin-bottom: 1.8rem; }
+        .uc-section h4 {
+            font-size: 0.92rem; color: #37474f; margin: 0 0 0.8rem 0;
+            padding-bottom: 0.5rem; border-bottom: 1px solid #eef2f7;
+        }
+        .uc-section h4 i { color: #1976D2; margin-right: 6px; }
+        .uc-info { font-size: 0.88rem; color: #546e7a; margin-bottom: 0.8rem; }
+        .uc-info div { margin-bottom: 0.4rem; }
+        .uc-info strong { color: #1976D2; }
+        .uc-logout {
+            background: #ffebee; color: #c62828; border: none;
+            padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.82rem;
+            font-weight: 600; cursor: pointer; transition: all 0.3s;
+        }
+        .uc-logout:hover { background: #ffcdd2; }
+        .uc-pref label {
+            display: block; font-size: 0.82rem; color: #546e7a;
+            margin: 0.6rem 0 0.3rem; font-weight: 500;
+        }
+        .uc-pref input, .uc-pref select {
+            width: 100%; padding: 0.55rem 0.8rem; border: 1.5px solid #e0e8f0;
+            border-radius: 8px; font-size: 0.85rem; box-sizing: border-box;
+            transition: all 0.3s;
+        }
+        .uc-pref input:focus, .uc-pref select:focus {
+            outline: none; border-color: #1976D2;
+        }
+        .uc-budget-row { display: flex; align-items: center; gap: 8px; }
+        .uc-budget-row input { flex: 1; }
+        .uc-budget-row span { color: #90a4ae; }
+        .uc-save-pref {
+            width: 100%; margin-top: 0.8rem; padding: 0.65rem;
+            background: linear-gradient(135deg, #1976D2, #1565C0);
+            color: #fff; border: none; border-radius: 8px;
+            font-size: 0.88rem; font-weight: 600; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .uc-save-pref:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(25,118,210,0.3); }
+        .uc-pref-hint { font-size: 0.75rem; color: #90a4ae; margin-top: 0.4rem; }
+        .uc-favorites, .uc-history { max-height: 200px; overflow-y: auto; }
+        .uc-empty { text-align: center; color: #b0bec5; font-size: 0.85rem; padding: 1rem; }
+        .uc-fav-item, .uc-history-item {
+            padding: 0.6rem 0.8rem; background: #f8fafc;
+            border-radius: 8px; margin-bottom: 0.5rem;
+            font-size: 0.82rem; color: #455a64; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .uc-fav-item:hover, .uc-history-item:hover { background: #e3f2fd; }
+        .uc-fav-item .fav-type {
+            display: inline-block; font-size: 0.7rem; padding: 1px 6px;
+            border-radius: 4px; background: #e3f2fd; color: #1976D2;
+            margin-right: 6px; font-weight: 600;
+        }
+        .uc-fav-item .fav-del {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #ef9a9a; cursor: pointer;
+            font-size: 0.85rem; opacity: 0; transition: opacity 0.2s;
+        }
+        .uc-fav-item:hover .fav-del { opacity: 1; }
+        .uc-history-item .hist-role {
+            font-weight: 600; color: #1976D2; margin-right: 4px;
+        }
+        .uc-clear-history {
+            margin-top: 0.5rem; background: none; border: 1px solid #ef9a9a;
+            color: #e57373; padding: 0.4rem 0.8rem; border-radius: 6px;
+            font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
+        }
+        .uc-clear-history:hover { background: #ffebee; }
+        /* 租房知识普及选项对话框按钮 */
+        .msg-options {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+        }
+        .msg-option-btn {
+            background: linear-gradient(135deg, rgba(25,118,210,0.08), rgba(25,118,210,0.16));
+            border: 1px solid rgba(25,118,210,0.35);
+            color: #1565c0; border-radius: 18px; padding: 6px 14px;
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+        }
+        .msg-option-btn:hover { background: rgba(25,118,210,0.2); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(25,118,210,0.15); }
+        /* 房源单独收藏 */
+        .house-fav-container {
+            margin-top: 0.8rem; padding: 0.8rem;
+            background: linear-gradient(135deg, #f0f7ff, #e8f0fe);
+            border-radius: 10px; border: 1px solid #bbdefb;
+        }
+        .house-fav-title {
+            font-size: 0.82rem; font-weight: 600; color: #1565C0;
+            margin-bottom: 0.5rem;
+        }
+        .house-fav-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.35rem 0.5rem; margin-bottom: 0.3rem;
+            background: #fff; border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .house-fav-item:hover { background: #e3f2fd; }
+        .house-fav-name {
+            font-size: 0.8rem; color: #37474f; flex: 1;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            margin-right: 8px;
+        }
+        .house-fav-btn {
+            background: none; border: none; color: #cfd8dc;
+            cursor: pointer; font-size: 0.9rem; padding: 2px 6px;
+            transition: all 0.2s;
+        }
+        .house-fav-btn:hover { color: #ffb300; transform: scale(1.2); }
+        .house-fav-btn.favorited { color: #ffb300; }
+        /* 对比按钮 */
+        .uc-compare-btn {
+            float: right; background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: #fff; border: none; padding: 4px 12px;
+            border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .uc-compare-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(255,152,0,0.3); }
+        .uc-fav-item { position: relative; padding-left: 30px; }
+        .uc-fav-item input[type="checkbox"] {
+            position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+            width: 16px; height: 16px; cursor: pointer; accent-color: #1976D2;
+        }
+        /* 对比详情 */
+        .compare-detail {
+            margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 10px;
+        }
+        .compare-house-card {
+            flex: 1; min-width: 180px; background: #f8fafc;
+            border-radius: 10px; padding: 0.8rem; border-left: 3px solid #1976D2;
+        }
+        .compare-house-card h5 {
+            margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #1976D2;
+        }
+        .compare-house-card p {
+            font-size: 0.78rem; color: #546e7a; margin: 2px 0;
+        }
+        .compare-house-card p strong { color: #37474f; }
+        /* 响应式 */
+        @media screen and (max-width: 900px) {
+            .two-columns { grid-template-columns: 1fr; gap: 1.2rem; }
+            .app-container { padding: 1rem; }
+            .logo-text { font-size: 1.4rem; }
+        }
+        @media screen and (max-width: 480px) {
+            .app-header { flex-direction: column; align-items: flex-start; }
+            .input-area { flex-wrap: wrap; padding: 0.5rem; }
+            .input-area input { width: 100%; padding: 0.7rem 1rem; border: 1px solid #d0dce8; border-radius: 50px; }
+            .input-area button { width: 100%; justify-content: center; }
+        }
+        .agent-panel::-webkit-scrollbar { width: 5px; }
+        .agent-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #90caf9, #1976D2); border-radius: 12px; }
+        /* 合同审查 */
+        .contract-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 0.8rem;
+        }
+        .contract-btn {
+            background: linear-gradient(135deg, #7c4dff, #536dfe);
+            color: #fff;
+            border: none;
+            padding: 0.55rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 3px 12px rgba(124,77,255,0.25);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .contract-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 18px rgba(124,77,255,0.35);
+        }
+        .contract-btn.active {
+            background: linear-gradient(135deg, #536dfe, #304ffe);
+        }
+        .contract-panel {
+            margin-bottom: 0.8rem;
+            animation: msgSlideIn 0.3s ease;
+        }
+        .contract-upload-area {
+            border: 2px dashed #b39ddb;
+            border-radius: 14px;
+            padding: 1.8rem;
+            text-align: center;
+            background: rgba(243,229,245,0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .contract-upload-area:hover, .contract-upload-area.dragover {
+            border-color: #7c4dff;
+            background: rgba(243,229,245,0.6);
+            transform: scale(1.01);
+        }
+        .contract-upload-area i {
+            font-size: 2.2rem;
+            color: #7c4dff;
+            margin-bottom: 0.6rem;
+        }
+        .contract-upload-area p {
+            color: #455a64;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 0;
+        }
+        .contract-hint {
+            font-size: 0.75rem !important;
+            color: #90a4ae !important;
+            margin-top: 0.4rem !important;
+        }
+        .contract-loading {
+            text-align: center;
+            padding: 1.5rem;
+            color: #7c4dff;
+            font-size: 0.9rem;
+        }
+        .contract-loading i {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .contract-result {
+            background: rgba(255,255,255,0.9);
+            border-radius: 14px;
+            padding: 1.2rem;
+            border: 1px solid rgba(124,77,255,0.15);
+            box-shadow: 0 4px 16px rgba(124,77,255,0.08);
+        }
+        .contract-summary {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid #eee;
+        }
+        .risk-badge {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .risk-badge.high { background: linear-gradient(135deg, #ffcdd2, #ef9a9a); color: #c62828; }
+        .risk-badge.medium { background: linear-gradient(135deg, #fff9c4, #fff59d); color: #f57f17; }
+        .risk-badge.low { background: linear-gradient(135deg, #c8e6c9, #a5d6a7); color: #2e7d32; }
+        .risk-badge.unknown { background: #e0e0e0; color: #616161; }
+        .contract-summary-text {
+            font-size: 0.88rem;
+            color: #455a64;
+            line-height: 1.5;
+        }
+        .contract-section {
+            margin-bottom: 1rem;
+        }
+        .contract-section-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #37474f;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .risk-item {
+            background: #fff;
+            border-radius: 10px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.6rem;
+            border-left: 3px solid #ccc;
+            border: 1px solid #f0f0f0;
+            border-left-width: 3px;
+        }
+        .risk-item.severity-high { border-left-color: #e53935; background: linear-gradient(135deg, #fff5f5, #fff); }
+        .risk-item.severity-medium { border-left-color: #fb8c00; background: linear-gradient(135deg, #fffdf5, #fff); }
+        .risk-item.severity-low { border-left-color: #43a047; background: linear-gradient(135deg, #f5fff5, #fff); }
+        .risk-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+        .risk-type-tag {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #ede7f6;
+            color: #5e35b1;
+            font-weight: 600;
+        }
+        .risk-severity-tag {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .risk-severity-tag.high { background: #ffebee; color: #c62828; }
+        .risk-severity-tag.medium { background: #fff8e1; color: #f57f17; }
+        .risk-severity-tag.low { background: #e8f5e9; color: #2e7d32; }
+        .risk-clause {
+            font-size: 0.8rem;
+            color: #546e7a;
+            background: #f5f5f5;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            font-style: italic;
+        }
+        .risk-analysis {
+            font-size: 0.82rem;
+            color: #37474f;
+            line-height: 1.5;
+            margin-bottom: 0.4rem;
+        }
+        .risk-suggestion {
+            font-size: 0.82rem;
+            color: #1565c0;
+            line-height: 1.5;
+        }
+        .risk-suggestion::before {
+            content: "💡 修改建议：";
+            font-weight: 600;
+        }
+        .positive-list, .missing-list {
+            list-style: none;
+            padding: 0;
+        }
+        .positive-list li, .missing-list li {
+            font-size: 0.82rem;
+            color: #455a64;
+            padding: 0.3rem 0;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+        .positive-list li::before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+        .missing-list li::before {
+            content: "⚠️";
+            position: absolute;
+            left: 0;
+        }
+    
+        /* ===== 语音朗读按钮（TTS） ===== */
+        .tts-btn {
+            background: rgba(25,118,210,0.08);
+            border: 1px solid rgba(25,118,210,0.3);
+            color: #1976D2;
+            border-radius: 8px;
+            width: 28px; height: 28px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-left: 8px; vertical-align: middle;
+            transition: all 0.2s;
+        }
+        .tts-btn:hover { background: rgba(25,118,210,0.18); }
+        .tts-btn.speaking { background: #e53935; border-color: #e53935; color: #fff; animation: ttsPulse 1s infinite; }
+        @keyframes ttsPulse { 0%{box-shadow:0 0 0 0 rgba(229,57,53,0.4);} 100%{box-shadow:0 0 0 8px rgba(229,57,53,0);} }
+
+        /* ===== 房源结构化卡片 ===== */
+        .house-cards { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .house-card {
+            background: linear-gradient(135deg, #ffffff, #f2f7ff);
+            border: 1px solid #e3ecfa;
+            border-left: 4px solid #1976D2;
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 2px 10px rgba(25,118,210,0.08);
+            transition: all 0.2s;
+        }
+        .house-card:hover { box-shadow: 0 4px 16px rgba(25,118,210,0.15); transform: translateY(-1px); }
+        .house-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .house-card-idx {
+            background: linear-gradient(135deg, #1976D2, #1565c0);
+            color: #fff; font-size: 0.75rem; font-weight: 600;
+            width: 22px; height: 22px; border-radius: 6px;
+            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .house-card-title { font-weight: 600; color: #1A1B1C; font-size: 0.95rem; flex: 1; min-width: 0; }
+        .house-card-district {
+            background: rgba(25,118,210,0.1); color: #1565c0;
+            font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; flex-shrink: 0;
+        }
+        .house-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 6px; }
+        .house-card-cell {
+            background: #fff; border: 1px solid #eef2f7; border-radius: 8px;
+            padding: 6px 8px; text-align: center;
+        }
+        .house-card-cell .lbl { display: block; font-size: 0.68rem; color: #90a4ae; margin-bottom: 2px; }
+        .house-card-cell .val { display: block; font-size: 0.85rem; font-weight: 600; color: #2c3e50; }
+        .house-card-cell.rent .val { color: #e53935; }
+        .house-card-cell.metro .val { color: #1976D2; }
+        .house-card-link { margin-top: 8px; text-align: right; }
+        .house-card-link a {
+            color: #1976D2; text-decoration: none; font-size: 0.78rem;
+            border: 1px solid rgba(25,118,210,0.35); padding: 4px 10px; border-radius: 8px;
+            display: inline-flex; align-items: center; gap: 4px;
+            transition: all 0.2s;
+        }
+        .house-card-link a:hover { background: rgba(25,118,210,0.08); }
+        .house-raw-details { margin-top: 8px; font-size: 0.75rem; }
+        .house-raw-details summary { color: #90a4ae; cursor: pointer; user-select: none; }
+        .house-raw-text { margin-top: 6px; padding: 8px; background: rgba(25,118,210,0.04); border-radius: 8px; }
+        .house-card-fav {
+            background: #fff;
+            border: 1px solid rgba(25,118,210,0.3);
+            color: #90a4ae;
+            border-radius: 8px;
+            width: 30px; height: 30px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: none;
+            align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .house-card-fav:hover { border-color: #ffb300; color: #ffb300; }
+        .house-card-fav.favorited { background: #fff8e1; border-color: #ffb300; color: #ffb300; }
+        .house-card-head:hover .house-card-fav { display: inline-flex; }
+
+
+        /* ===== 界面微调增强 ===== */
+        .app-header {
+            background: linear-gradient(90deg, rgba(25,118,210,0.04), rgba(124,77,255,0.04));
+            border-radius: 16px;
+            padding: 1rem 1.2rem;
+            border: 1px solid rgba(25,118,210,0.12);
+        }
+        .msg-wrapper.assistant .bubble {
+            border: 1px solid rgba(25,118,210,0.12);
+            box-shadow: 0 2px 10px rgba(25,118,210,0.05);
+        }
+
+    </style>
+</head>
+<body>
+<div class="bg-orb o1"></div>
+<div class="bg-orb o2"></div>
+<div class="bg-orb o3"></div>
+<div class="bg-orb o4"></div>
+<div class="app-container" id="app">
+    <header class="app-header">
+        <div class="logo-area">
+            <span class="logo-icon"><i class="fas fa-compass"></i></span>
+            <div>
+                <div class="logo-text">智租顾问</div>
+                <div class="logo-sub">智能租房助手 · 房源 / 出行 / 周边 / 法律咨询</div>
+            </div>
+        </div>
+        <div class="badge-system">
+            <i class="fas fa-robot"></i>
+            <span>双引擎在线</span>
+            <span class="status-dot"></span>
+        </div>
+        <div class="user-area" id="userArea">
+            <button id="loginBtn" class="user-login-btn">
+                <i class="fas fa-user"></i> 登录/注册
+            </button>
+            <div id="userInfo" style="display:none;" class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span class="user-name" id="userName">用户</span>
+                <button id="userCenterBtn" class="user-center-btn" title="用户中心">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="two-columns">
+        <!-- 左侧对话 -->
+        <div class="chat-panel">
+            <h2><i class="fas fa-comment-dots"></i> 智能对话</h2>
+            <div class="chat-messages" id="chatMessages">
+                <div class="msg-wrapper assistant">
+                    <div class="bubble">
+                        <i class="fas fa-robot" style="margin-right:8px;color:#1976D2;"></i>你好！我是智租顾问，可以帮你查询郑州房源、周边景点美食、地铁出行，也可以解答租房相关法律问题。请问有什么可以帮您？
+                    </div>
+                    <div class="msg-meta">刚刚</div>
+                </div>
+            </div>
+            <!-- 合同审查入口 -->
+            <div class="contract-toolbar">
+                <button id="contractToggleBtn" class="contract-btn">
+                    <i class="fas fa-file-contract"></i> 租房合同智能审查
+                </button>
+            </div>
+            <!-- 合同审查上传区域 -->
+            <div id="contractPanel" class="contract-panel" style="display:none;">
+                <div class="contract-upload-area" id="contractDropZone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>拖拽合同文件到此处，或点击选择文件</p>
+                    <p class="contract-hint">支持 PDF / JPG / PNG / TXT，扫描件需清晰</p>
+                    <input type="file" id="contractFileInput" accept=".pdf,.jpg,.jpeg,.png,.bmp,.webp,.txt" style="display:none;">
+                </div>
+                <div id="contractResult" class="contract-result" style="display:none;"></div>
+                <div id="contractLoading" class="contract-loading" style="display:none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span id="contractLoadingText">正在提取合同文本...</span>
+                </div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="输入问题，例如：金水区2000元以下房源 / 房东卖房我能拒绝搬走吗" autocomplete="off">
+                <button id="micBtn" title="语音输入（Chrome/Edge）"><i class="fas fa-microphone"></i></button>
+                <button id="sendBtn"><i class="fas fa-paper-plane"></i> 发送</button>
+            </div>
+            <div style="height:0.5rem;"></div>
+        </div>
+
+        <!-- 右侧能力卡片 -->
+        <div class="agent-panel">
+            <h2><i class="fas fa-microchip"></i> 能力中心</h2>
+            <div id="agentCardContainer"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span><i class="fas fa-code"></i> A2A 智能体网络</span>
+        <span><i class="fas fa-brain"></i> RAG 法律问答</span>
+        <span><i class="fas fa-shield-alt"></i> 智能助手 v3.0</span>
+    </div>
+</div>
+
+<!-- 登录/注册弹窗 -->
+<div class="modal-overlay" id="authModal" style="display:none;">
+    <div class="modal-box auth-modal">
+        <button class="modal-close" id="authModalClose">&times;</button>
+        <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">登录</button>
+            <button class="auth-tab" data-tab="register">注册</button>
+        </div>
+        <div class="auth-form" id="loginForm">
+            <input type="text" id="loginUsername" placeholder="用户名" autocomplete="username">
+            <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
+            <button class="auth-submit" id="loginSubmit">登录</button>
+            <div class="auth-error" id="loginError"></div>
+        </div>
+        <div class="auth-form" id="registerForm" style="display:none;">
+            <input type="text" id="regUsername" placeholder="用户名（至少2字符）" autocomplete="username">
+            <input type="password" id="regPassword" placeholder="密码（至少4字符）" autocomplete="new-password">
+            <input type="text" id="regPhone" placeholder="手机号（选填）" autocomplete="tel">
+            <button class="auth-submit" id="registerSubmit">注册</button>
+            <div class="auth-error" id="registerError"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户中心侧边栏 -->
+<div class="user-center-overlay" id="userCenterOverlay" style="display:none;"></div>
+<div class="user-center-panel" id="userCenterPanel">
+    <div class="user-center-header">
+        <h3><i class="fas fa-user-cog"></i> 用户中心</h3>
+        <button class="user-center-close" id="userCenterClose">&times;</button>
+    </div>
+    <div class="user-center-body">
+        <div class="uc-section">
+            <h4><i class="fas fa-user"></i> 账户信息</h4>
+            <div class="uc-info">
+                <div><span>用户名：</span><strong id="ucUsername">-</strong></div>
+                <div><span>收藏数：</span><strong id="ucFavCount">0</strong></div>
+            </div>
+            <button class="uc-logout" id="ucLogout">退出登录</button>
+        </div>
+        <div class="uc-section">
+            <h4><i class="fas fa-sliders-h"></i> 个性化偏好</h4>
+            <div class="uc-pref">
+                <label>预算区间（元/月）</label>
+                <div class="uc-budget-row">
+                    <input type="number" id="prefBudgetMin" placeholder="最低" value="0">
+                    <span>~</span>
+                    <input type="number" id="prefBudgetMax" placeholder="最高" value="99999">
+                </div>
+                <label>偏好区域（逗号分隔）</label>
+                <input type="text" id="prefDistricts" placeholder="如：金水区,中原区">
+                <label>偏好户型</label>
+                <select id="prefHouseType">
+                    <option value="">不限</option>
+                    <option value="整租">整租</option>
+                    <option value="合租">合租</option>
+                    <option value="一室">一室</option>
+                    <option value="两室">两室</option>
+                    <option value="三室">三室</option>
+                </select>
+                <button class="uc-save-pref" id="savePrefBtn">保存偏好</button>
+                <div class="uc-pref-hint">保存后，房源推荐将优先考虑您的偏好</div>
+            </div>
+        </div>
+        <div class="uc-section">
+            <h4><i class="fas fa-star"></i> 我的收藏
+                <button class="uc-compare-btn" id="compareBtn" style="display:none;">
+                    <i class="fas fa-chart-pie"></i> 对比选中
+                </button>
+            </h4>
+            <div class="uc-favorites" id="ucFavorites">
+                <div class="uc-empty">暂无收藏</div>
+            </div>
+        </div>
+        <div class="uc-section">
+            <h4><i class="fas fa-history"></i> 咨询历史</h4>
+            <div class="uc-history" id="ucHistory">
+                <div class="uc-empty">暂无历史记录</div>
+            </div>
+            <button class="uc-clear-history" id="clearHistoryBtn">清空历史</button>
+        </div>
+    </div>
+</div>
+
+<!-- 房源对比雷达图弹窗 -->
+<div class="modal-overlay" id="compareModal" style="display:none;">
+    <div class="modal-box compare-modal" style="width:720px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+        <button class="modal-close" id="compareModalClose">&times;</button>
+        <h3 style="margin-bottom:1rem;color:#1976D2;"><i class="fas fa-chart-pie"></i> 房源对比分析</h3>
+        <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+            <button id="aiCompareBtn" style="background:linear-gradient(135deg,#1976D2,#1565C0);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-robot"></i> AI智能对比分析
+            </button>
+            <span style="color:#90a4ae;font-size:0.7rem;align-self:center;">基于用户画像生成个性化推荐理由</span>
+        </div>
+        <div id="aiCompareResult" style="display:none;margin-bottom:1rem;padding:12px;background:linear-gradient(135deg,#f5f9ff,#eef5fc);border:1px solid #d0e3f7;border-radius:8px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#1976D2;font-weight:600;font-size:0.85rem;">
+                <i class="fas fa-lightbulb"></i> AI智能分析报告
+            </div>
+            <div id="aiCompareContent" style="font-size:0.78rem;line-height:1.7;color:#37474f;white-space:pre-wrap;"></div>
+        </div>
+        <div id="radarChart" style="width:100%;height:420px;"></div>
+        <div id="compareDetail" class="compare-detail"></div>
+    </div>
+</div>
+
+<script>
+(function(){
+    "use strict";
+
+    // 能力卡片数据
+    const agentData = [
+        { name: "HouseQueryAssistant", icon: "fa-home", color: "blue", url: "localhost:5006", skills: "房源查询、租金/户型/地铁筛选", desc: "基于 house_listing 房源表" },
+        { name: "PoiQueryAssistant", icon: "fa-map-marker-alt", color: "blue", url: "localhost:5007", skills: "景点/美食/公园POI探索", desc: "基于 poi_data 周边数据" },
+        { name: "MetroQueryAssistant", icon: "fa-subway", color: "blue", url: "localhost:5008", skills: "地铁线路、最近地铁站", desc: "基于 metro_station 地铁数据" },
+        { name: "RecommendQueryAssistant", icon: "fa-star", color: "blue", url: "localhost:5009", skills: "跨领域组合推荐", desc: "房源+周边+地铁综合" },
+        { name: "LegalQASystem", icon: "fa-gavel", color: "purple", url: "RAG引擎", skills: "租房/合同/民事法律咨询", desc: "基于民法典/劳动法等法条库", legal: true },
+        { name: "ChatLLM", icon: "fa-comment-dots", color: "green", url: "大模型直连", skills: "日常闲聊、常识问答、自由对话", desc: "与租房法律无关的通用问题", chat: true }
+    ];
+
+    function renderAgentCards() {
+        const container = document.getElementById('agentCardContainer');
+        let html = '';
+        agentData.forEach(agent => {
+            const isLegal = agent.legal;
+            html += `
+                <div class="agent-card ${isLegal ? 'legal' : ''}">
+                    <div class="agent-name">
+                        <i class="fas ${agent.icon} ${agent.color}"></i>
+                        <span>${agent.name}</span>
+                        <span class="agent-status"><i class="fas fa-check-circle" style="font-size:0.6rem;"></i> 在线</span>
+                    </div>
+                    <div class="agent-detail">
+                        <strong>技能</strong> ${agent.skills}<br>
+                        <strong>描述</strong> ${agent.desc}<br>
+                        <strong>地址</strong> <span style="font-family:monospace;font-size:0.72rem;color:#78909c;">${agent.url}</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    // 轻量 markdown 渲染：支持 **加粗**、[文字](链接) 与独立 URL，输出保留换行（配合 pre-wrap）
+    function renderMarkdown(text) {
+        var t = escapeHtml(String(text == null ? '' : text));
+        // markdown 链接 [text](url)
+        t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s<>"'\)]+)\)/g, function(m, label, url) {
+            return '<a href="' + url + '" target="_blank" style="color:#1976D2;text-decoration:underline;word-break:break-all;">' + label + '</a>';
+        });
+        // 独立 URL（跳过已包进 <a href="..."> 的链接）
+        t = t.replace(/(?<![\>"\]])(https?:\/\/[^\s<>"'\)]+)/g, function(m) {
+            return '<a href="' + m + '" target="_blank" style="color:#1976D2;text-decoration:underline;word-break:break-all;">' + m + '</a>';
+        });
+                // markdown 标题：#/##/### -> 带表情图标的标题块（替代裸 # 号）
+        t = t.split('\n').map(function(line) {
+            var m = line.match(/^(#{1,6})\s*(.*?)\s*$/);
+            if (m) {
+                var level = m[1].length;
+                var icon = level === 1 ? '📖' : (level === 2 ? '📌' : '✅');
+                var cls = level === 1 ? 'md-h1' : (level === 2 ? 'md-h2' : 'md-h3');
+                return '<div class="' + cls + '">' + icon + ' ' + m[2] + '</div>';
+            }
+            return line;
+        }).join('\n');
+        // **加粗**
+// **加粗**
+        t = t.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#1565c0;">$1</strong>');
+        return t;
+    }
+
+    function addMessage(role, content, route) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `msg-wrapper ${role}` + (role==='assistant' && route==='legal' ? ' legal' : '');
+        if (role === 'assistant' && route) {
+            const tag = document.createElement('span');
+            var tagClass, tagText;
+            if (route === 'legal') { tagClass = 'legal'; tagText = '法律咨询'; }
+            else if (route === 'chat') { tagClass = 'chat'; tagText = '通用对话'; }
+            else { tagClass = 'agent'; tagText = '智能体查询'; }
+            tag.className = 'route-tag ' + tagClass;
+            tag.textContent = tagText;
+            wrapper.appendChild(tag);
+        }
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.innerHTML = renderMarkdown(content);
+        if (role === 'assistant') {
+            const icon = document.createElement('span');
+            var iconClass = route === 'legal' ? 'fa-gavel' : (route === 'chat' ? 'fa-comment-dots' : 'fa-robot');
+            var iconColor = route === 'legal' ? '#7b1fa2' : (route === 'chat' ? '#43a047' : '#1976D2');
+            icon.innerHTML = '<i class="fas '+iconClass+'" style="margin-right:8px;color:'+iconColor+';"></i> ';
+            bubble.prepend(icon);
+        }
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+        meta.textContent = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(meta);
+        if (role === 'assistant') attachTTSButton(wrapper, bubble);
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    let _thinkingTimers = [];
+    function showThinking() {
+        removeThinking();
+        const placeholder = document.createElement('div');
+        placeholder.className = 'msg-wrapper assistant';
+        placeholder.id = 'thinkingPlaceholder';
+        placeholder.innerHTML = `
+            <div class="thinking-card">
+                <div class="thinking-header">
+                    <i class="fas fa-brain"></i>
+                    <span class="thinking-title">智能助手处理中</span>
+                    <span class="thinking-stage" id="thinkingStage">分析意图</span>
+                </div>
+                <div class="thinking-progress-track">
+                    <div class="thinking-progress-bar"></div>
+                </div>
+                <div class="thinking-steps">
+                    <div class="thinking-step active" data-step="intent"><span class="dot"></span>分析意图</div>
+                    <div class="thinking-step" data-step="search"><span class="dot"></span>检索知识</div>
+                    <div class="thinking-step" data-step="generate"><span class="dot"></span>生成答案</div>
+                </div>
+            </div>`;
+        chatMessages.appendChild(placeholder);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 自动切换阶段（基于时间推测，收到 token 后会移除）
+        _thinkingTimers.push(setTimeout(function() {
+            setThinkingStep('search');
+        }, 1500));
+        _thinkingTimers.push(setTimeout(function() {
+            setThinkingStep('generate');
+        }, 3500));
+        return placeholder;
+    }
+
+    function setThinkingStep(step) {
+        const card = document.querySelector('#thinkingPlaceholder .thinking-card');
+        if (!card) return;
+        const stageEl = card.querySelector('#thinkingStage');
+        const steps = card.querySelectorAll('.thinking-step');
+        const stepNames = { intent: '分析意图', search: '检索知识', generate: '生成答案' };
+        if (stageEl) stageEl.textContent = stepNames[step] || step;
+        steps.forEach(function(s) {
+            const sStep = s.getAttribute('data-step');
+            s.classList.remove('active', 'done');
+            if (sStep === step) s.classList.add('active');
+            else if (step === 'search' && sStep === 'intent') s.classList.add('done');
+            else if (step === 'generate' && (sStep === 'intent' || sStep === 'search')) s.classList.add('done');
+        });
+    }
+
+    function removeThinking() {
+        _thinkingTimers.forEach(function(t) { clearTimeout(t); });
+        _thinkingTimers = [];
+        const el = document.getElementById('thinkingPlaceholder');
+        if (el) el.remove();
+    }
+
+    // ===== 思考过程面板：根据后端真实事件更新（替代旧的基于时间推测） =====
+    let _thinkingSteps = [];  // 已记录的步骤 [{step, text, status}]
+    function updateThinkingPanel(obj) {
+        const placeholder = document.getElementById('thinkingPlaceholder');
+        if (!placeholder) return;
+        const card = placeholder.querySelector('.thinking-card');
+        if (!card) return;
+
+        const step = obj.step || 'unknown';
+        const text = obj.text || '处理中...';
+        const status = obj.status || 'running';
+
+        // 记录步骤（去重）
+        const existing = _thinkingSteps.find(function(s) { return s.step === step; });
+        if (existing) {
+            existing.status = status;
+            existing.text = text;
+        } else {
+            _thinkingSteps.push({ step: step, text: text, status: status });
+        }
+
+        // 更新阶段文字
+        const stageEl = card.querySelector('#thinkingStage');
+        if (stageEl) stageEl.textContent = text;
+
+        // 重建步骤显示
+        const stepsContainer = card.querySelector('.thinking-steps');
+        if (stepsContainer) {
+            let html = '';
+            _thinkingSteps.forEach(function(s, idx) {
+                const iconClass = s.status === 'done' ? 'fa-check-circle' : (s.status === 'running' ? 'fa-spinner fa-spin' : 'fa-circle');
+                html += '<div class="thinking-step ' + s.status + '" data-step="' + s.step + '">';
+                html += '<i class="fas ' + iconClass + '"></i> ';
+                html += '<span>' + s.text + '</span>';
+                html += '</div>';
+                if (idx < _thinkingSteps.length - 1) {
+                    html += '<i class="fas fa-chevron-right thinking-arrow"></i>';
+                }
+            });
+            stepsContainer.innerHTML = html;
+        }
+
+        // 如果全部完成，标记为done状态
+        if (status === 'done' && _thinkingSteps.every(function(s) { return s.status === 'done'; })) {
+            card.classList.add('all-done');
+        }
+    }
+
+    // 重置思考步骤（每次新提问前调用）
+    function resetThinkingSteps() {
+        _thinkingSteps = [];
+    }
+
+    // ===== 房源卡片渐进式渲染：流式过程中解析到房源就立即渲染 =====
+    let _renderedHouseCount = 0;  // 已渲染的房源数量
+    function progressiveRenderHouseCards(wrapper, fullText) {
+        if (!wrapper || !fullText) return;
+        const houses = extractHouses(fullText);
+        if (houses.length <= _renderedHouseCount) return;  // 没有新房源
+
+        // 有新房源，渲染增量部分
+        const newHouses = houses.slice(_renderedHouseCount);
+        _renderedHouseCount = houses.length;
+
+        // 查找或创建房源卡片容器
+        let container = wrapper.querySelector('.house-cards.progressive');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'house-cards progressive';
+            container.__houseList = [];
+            // 事件委托：收藏按钮
+            container.addEventListener('click', function(e) {
+                const btn = e.target.closest('.house-card-fav');
+                if (!btn) return;
+                const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                const house = container.__houseList[idx];
+                if (house) toggleHouseFavorite(btn, house);
+            });
+            // 插入到bubble之后（在文本之前显示卡片）
+            const bubble = wrapper.querySelector('.msg-bubble');
+            if (bubble && bubble.nextSibling) {
+                wrapper.insertBefore(container, bubble.nextSibling);
+            } else if (bubble) {
+                wrapper.appendChild(container);
+            }
+        }
+
+        // 渲染新增的房源卡片
+        newHouses.forEach(function(house, offset) {
+            const globalIdx = _renderedHouseCount - newHouses.length + offset;
+            container.__houseList.push(house);
+            const cardHtml = buildHouseCardHtml(house, globalIdx);
+            container.insertAdjacentHTML('beforeend', cardHtml);
+        });
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 构建单张房源卡片HTML（供渐进式渲染使用）
+    function buildHouseCardHtml(house, idx) {
+        const content = house.content || house.title || '';
+        const firstLine = String(content).split('\n')[0] || String(content);
+        const title = firstLine.replace(/^\d+[.、\)）]\s*/, '').replace(/\*\*/g, '').split('｜')[0].trim();
+        const distMatch = firstLine.match(/[（(]([^（）()]+?)[）)]/);
+        const district = distMatch ? distMatch[1] : '';
+        const areaMatch = String(content).match(/(\d+(?:\.\d+)?)\s*(?:㎡|平方米|平米)/);
+        const area = areaMatch ? areaMatch[1] + '㎡' : '';
+        const rentMatch = String(content).match(/(\d{3,6})\s*(?:元|块)\s*(?:\/)?\s*月?/);
+        const rent = rentMatch ? rentMatch[1] + '元/月' : '';
+        const layoutMatch = firstLine.match(/(\d+\s*室\s*\d*\s*厅?[\d\s]*卫?|主卧|次卧|整租|合租)/);
+        const layout = layoutMatch ? layoutMatch[1] : '';
+        const orientMatch = String(content).match(/朝向[:：]\s*([^\s｜|]+)/);
+        const orientation = orientMatch ? orientMatch[1] : '';
+        const floorMatch = String(content).match(/楼层[:：]\s*([^\s｜|]+)/);
+        const floor = floorMatch ? floorMatch[1] : '';
+        const metroMatch = String(content).match(/地铁[:：]\s*([^\n]+)/);
+        const metro = metroMatch ? metroMatch[1].trim() : '';
+        const urlMatch = String(content).match(/https?:\/\/[^\s\)\]】]+/);
+        const url = urlMatch ? urlMatch[0] : '';
+
+        let html = '<div class="house-card progressive">';
+        html += '<div class="house-card-head">' +
+            '<span class="house-card-idx">' + (idx + 1) + '</span>' +
+            '<span class="house-card-title">' + escapeHtml(title) + '</span>';
+        if (district) html += '<span class="house-card-district">' + escapeHtml(district) + '</span>';
+        html += '<button class="house-card-fav" data-idx="' + idx + '" title="收藏该房源"><i class="far fa-star"></i></button>';
+        html += '</div>';
+        html += '<div class="house-card-grid">';
+        if (rent) html += '<div class="house-card-cell rent"><span class="lbl">租金</span><span class="val">' + escapeHtml(rent) + '</span></div>';
+        if (area) html += '<div class="house-card-cell"><span class="lbl">面积</span><span class="val">' + escapeHtml(area) + '</span></div>';
+        if (layout) html += '<div class="house-card-cell"><span class="lbl">户型</span><span class="val">' + escapeHtml(layout) + '</span></div>';
+        if (orientation) html += '<div class="house-card-cell"><span class="lbl">朝向</span><span class="val">' + escapeHtml(orientation) + '</span></div>';
+        if (floor) html += '<div class="house-card-cell"><span class="lbl">楼层</span><span class="val">' + escapeHtml(floor) + '</span></div>';
+        if (metro) html += '<div class="house-card-cell metro"><span class="lbl">地铁</span><span class="val">' + escapeHtml(metro) + '</span></div>';
+        html += '</div>';
+        if (url) html += '<div class="house-card-link"><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> 查看详情</a></div>';
+        html += '</div>';
+        return html;
+    }
+
+    let sessionId = localStorage.getItem('sv_session_id');
+    if (!sessionId) {
+        sessionId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('s-' + Date.now());
+        localStorage.setItem('sv_session_id', sessionId);
+    }
+
+    const DEFAULT_SUGGESTIONS = ['推荐几个郑州好玩的景点','金水区2000元以下的房源','郑州东站坐几号线','房东卖房后我能拒绝搬走吗'];
+
+    function renderSuggestions(sugs) {
+        const old = document.getElementById('suggestionRow');
+        if (old) old.remove();
+        if (!sugs || !sugs.length) return;
+        const row = document.createElement('div');
+        row.id = 'suggestionRow';
+        row.className = 'suggestion-row';
+        sugs.forEach(function(q) {
+            const chip = document.createElement('button');
+            chip.className = 'suggestion-chip';
+            chip.textContent = q;
+            chip.addEventListener('click', function() { handleUserMessage(q); });
+            row.appendChild(chip);
+        });
+        chatMessages.appendChild(row);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function handleUserMessage(text) {
+        if (!text.trim()) return;
+        addMessage('user', text);
+        chatInput.value = '';
+        resetThinkingSteps();
+        _renderedHouseCount = 0;
+        showThinking();
+
+        // 创建流式助手消息占位
+        const wrapper = document.createElement('div');
+        wrapper.className = 'msg-wrapper assistant';
+        wrapper.style.display = 'none';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = '';
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+        meta.textContent = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(meta);
+        chatMessages.appendChild(wrapper);
+
+        let fullText = '';
+        let currentRoute = '';
+        let refsBox = null;
+
+        fetch('/api/chat/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, message: text, user_id: currentUser ? currentUser.user_id : null })
+        })
+        .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            function read() {
+                reader.read().then(function(_ref) {
+                    var chunk = _ref.value, done = _ref.done;
+                    if (done) {
+                        removeThinking();
+                        if (!fullText) {
+                            bubble.textContent = '（无返回内容）';
+                        }
+                        return;
+                    }
+                    buffer += decoder.decode(chunk, { stream: true });
+                    // SSE 事件以 \n\n 分隔
+                    var events = buffer.split('\n\n');
+                    buffer = events.pop(); // 最后一个可能不完整
+                    for (var i = 0; i < events.length; i++) {
+                        var line = events[i].trim();
+                        if (!line || line.indexOf('data: ') !== 0) continue;
+                        var jsonStr = line.substring(6);
+                        try {
+                            var obj = JSON.parse(jsonStr);
+                            if (obj.type === 'start') {
+                                removeThinking();
+                                wrapper.style.display = '';
+                                currentRoute = obj.route || '';
+                                // 添加路线标签
+                                if (currentRoute) {
+                                    var tag = document.createElement('span');
+                                    var tagClass, tagText;
+                                    if (currentRoute === 'legal') { tagClass = 'legal'; tagText = '法律咨询'; }
+                                    else if (currentRoute === 'chat') { tagClass = 'chat'; tagText = '通用对话'; }
+                                    else { tagClass = 'agent'; tagText = '智能体查询'; }
+                                    tag.className = 'route-tag ' + tagClass;
+                                    tag.textContent = tagText;
+                                    wrapper.insertBefore(tag, bubble);
+                                    wrapper.className = 'msg-wrapper assistant' + (currentRoute === 'legal' ? ' legal' : '');
+                                    // 添加图标
+                                    var icon = document.createElement('span');
+                                    var iconClass = currentRoute === 'legal' ? 'fa-gavel' : (currentRoute === 'chat' ? 'fa-comment-dots' : 'fa-robot');
+                                    var iconColor = currentRoute === 'legal' ? '#7b1fa2' : (currentRoute === 'chat' ? '#43a047' : '#1976D2');
+                                    icon.innerHTML = '<i class="fas '+iconClass+'" style="margin-right:8px;color:'+iconColor+';"></i> ';
+                                    bubble.prepend(icon);
+                                }
+                                bubble.textContent = '';
+                            } else if (obj.type === 'options') {
+                                // 租房知识普及选项对话框：可点击按钮，点击后展开对应回答
+                                removeThinking();
+                                var opts = obj.content || [];
+                                if (!opts.length) return;
+                                var optBox = document.createElement('div');
+                                optBox.className = 'msg-options';
+                                opts.forEach(function(o) {
+                                    var ob = document.createElement('button');
+                                    ob.className = 'msg-option-btn';
+                                    ob.textContent = o.label;
+                                    ob.addEventListener('click', function() {
+                                        let q = (o.query || o.label || '').trim();
+                                        // "周边/附近..." 无地点追问 → 从聊天上下文自动补全区域（如 金水区）
+                                        if (/^(周边|附近|周围)/.test(q) && !/[区县市]/.test(q)) {
+                                            const region = extractRegionFromContext();
+                                            if (region) q = region + q;
+                                        }
+                                        handleUserMessage(q);
+                                    });
+                                    optBox.appendChild(ob);
+                                });
+                                wrapper.appendChild(optBox);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } else if (obj.type === 'references') {
+                                // 收到引用条文，创建引用区域
+                                removeThinking();
+                                wrapper.style.display = '';
+                                var refs = obj.content || [];
+                                if (!refs.length) return;
+                                refsBox = document.createElement('div');
+                                refsBox.className = 'references-box';
+                                var title = document.createElement('div');
+                                title.className = 'ref-title';
+                                title.innerHTML = '<i class="fas fa-bookmark"></i> 引用条文（' + refs.length + '）';
+                                refsBox.appendChild(title);
+                                refs.forEach(function(ref) {
+                                    var item = document.createElement('div');
+                                    item.className = 'ref-item';
+                                    var header = document.createElement('div');
+                                    var law = document.createElement('span');
+                                    law.className = 'ref-law';
+                                    law.textContent = '《' + (ref.law || '未知法律') + '》';
+                                    header.appendChild(law);
+                                    if (ref.article) {
+                                        var art = document.createElement('span');
+                                        art.className = 'ref-article';
+                                        art.textContent = ref.article;
+                                        header.appendChild(art);
+                                    }
+                                    item.appendChild(header);
+                                    if (ref.snippet) {
+                                        var snip = document.createElement('div');
+                                        snip.className = 'ref-snippet';
+                                        snip.textContent = ref.snippet;
+                                        item.appendChild(snip);
+                                    }
+                                    refsBox.appendChild(item);
+                                });
+                                wrapper.appendChild(refsBox);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } else if (obj.type === 'thinking') {
+                                // 思考过程：后端推送的真实Agent调用步骤
+                                updateThinkingPanel(obj);
+                            } else if (obj.type === 'token') {
+                                removeThinking();
+                                wrapper.style.display = '';
+                                fullText += obj.content;
+                                // 渐进式房源卡片渲染：流式过程中解析到房源就立即渲染
+                                progressiveRenderHouseCards(wrapper, fullText);
+                                // 流式过程中显示纯文本（避免markdown闪烁）
+                                if (bubble.querySelector('i')) {
+                                    // 保留图标，只更新文本
+                                    var iconEl = bubble.querySelector('i').parentNode;
+                                    bubble.innerHTML = '';
+                                    bubble.appendChild(iconEl);
+                                    bubble.appendChild(document.createTextNode(fullText));
+                                } else {
+                                    bubble.textContent = fullText;
+                                }
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                            } else if (obj.type === 'done') {
+                                removeThinking();
+                                wrapper.style.display = '';
+                                if (obj.reply) fullText = obj.reply;
+                                // 最终渲染：房源回复 → 结构化卡片（含可折叠原文）；其他 → markdown
+                                const _houseCards = extractHouses(fullText);
+                                if (_houseCards.length >= 1) {
+                                    if (bubble.querySelector('i')) {
+                                        var iconEl2 = bubble.querySelector('i').parentNode;
+                                        bubble.innerHTML = '';
+                                        bubble.appendChild(iconEl2);
+                                    } else {
+                                        bubble.innerHTML = '';
+                                    }
+                                    renderHouseCards(bubble, fullText);
+                                    const _rawBox = document.createElement('details');
+                                    _rawBox.className = 'house-raw-details';
+                                    _rawBox.innerHTML = '<summary><i class="fas fa-align-left"></i> 查看原文</summary><div class="house-raw-text"></div>';
+                                    _rawBox.querySelector('.house-raw-text').innerHTML = renderMarkdown(fullText);
+                                    bubble.appendChild(_rawBox);
+                                } else {
+                                    if (bubble.querySelector('i')) {
+                                        var iconEl2 = bubble.querySelector('i').parentNode;
+                                        bubble.innerHTML = '';
+                                        bubble.appendChild(iconEl2);
+                                        bubble.insertAdjacentHTML('beforeend', renderMarkdown(fullText));
+                                    } else {
+                                        bubble.innerHTML = renderMarkdown(fullText);
+                                    }
+                                }
+                                renderSuggestions(obj.suggestions || []);
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                // 添加收藏按钮（仅智能体房源推荐路线：route=agent 且后端 fav 标记为真才渲染）
+                                // 注意：必须用 done 事件自带的 obj.route，不能用 currentRoute——agent 路线后端不发 start，currentRoute 恒为空
+                                addFavButtonToMessage(wrapper, fullText, obj.route || currentRoute, obj.fav);
+                                // 语音朗读按钮（语音问答闭环）
+                                attachTTSButton(wrapper, bubble);
+                                // 协作链路追踪面板（多智能体可观测性）
+                                if (obj.trace && obj.trace.steps && obj.trace.steps.length > 0) {
+                                    renderTracePanel(wrapper, obj.trace);
+                                }
+                            } else if (obj.type === 'error') {
+                                removeThinking();
+                                wrapper.style.display = '';
+                                fullText += obj.content;
+                                bubble.textContent = fullText;
+                            }
+                        } catch(e) {
+                            console.warn('SSE parse error:', e, jsonStr);
+                        }
+                    }
+                    read();
+                }).catch(function(err) {
+                    removeThinking();
+                    if (!fullText) {
+                        bubble.textContent = '请求失败：' + (err && err.message ? err.message : err);
+                    }
+                });
+            }
+            read();
+        })
+        .catch(function(err) {
+            removeThinking();
+            wrapper.style.display = '';
+            bubble.textContent = '请求失败：' + (err && err.message ? err.message : err) + '。请确认后端已启动。';
+        });
+    }
+
+    // ===== 语音输入（浏览器原生 Web Speech API，Chrome/Edge 支持，免后端/免API Key）=====
+    const micBtn = document.getElementById('micBtn');
+    let recognition = null;
+    let micRecording = false;
+    let micFinalText = '';
+    const micPlaceholder = '输入问题，例如：金水区2000元以下房源 / 房东卖房我能拒绝搬走吗';
+
+    function initSpeech() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            micBtn.disabled = true;
+            micBtn.title = '当前浏览器不支持语音输入，请使用 Chrome 或 Edge';
+            return;
+        }
+        recognition = new SR();
+        recognition.lang = 'zh-CN';
+        recognition.interimResults = true;
+        recognition.continuous = false;
+
+        recognition.onstart = function() {
+            micRecording = true;
+            micFinalText = '';
+            micBtn.classList.add('recording');
+            micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+            micBtn.title = '点击停止';
+            chatInput.placeholder = '正在聆听…请说话';
+        };
+        recognition.onresult = function(event) {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const r = event.results[i];
+                if (r.isFinal) { micFinalText += r[0].transcript; }
+                else { interim += r[0].transcript; }
+            }
+            chatInput.value = (micFinalText + interim).trim();
+        };
+        recognition.onend = function() {
+            micBtn.classList.remove('recording');
+            micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            micBtn.title = '语音输入（Chrome/Edge）';
+            chatInput.placeholder = micPlaceholder;
+            micRecording = false;
+            const t = micFinalText.trim();
+            if (t) {
+                chatInput.value = t;
+                handleUserMessage(t);   // 识别结束自动发送
+            }
+        };
+        recognition.onerror = function(event) {
+            if (event.error === 'not-allowed') {
+                alert('麦克风权限被拒绝，请在浏览器设置中允许使用麦克风。');
+            }
+            micBtn.classList.remove('recording');
+            micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            micBtn.title = '语音输入（Chrome/Edge）';
+            chatInput.placeholder = micPlaceholder;
+            micRecording = false;
+        };
+    }
+    initSpeech();
+
+    micBtn.addEventListener('click', function() {
+        if (!recognition) {
+            alert('当前浏览器不支持语音输入，请使用 Chrome 或 Edge。');
+            return;
+        }
+        if (micRecording) { recognition.stop(); return; }
+        recognition.start();
+    });
+
+    sendBtn.addEventListener('click', function() {
+        const val = chatInput.value.trim();
+        if (val) handleUserMessage(val);
+    });
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = chatInput.value.trim();
+            if (val) handleUserMessage(val);
+        }
+    });
+
+    renderAgentCards();
+    const firstMsgMeta = document.querySelector('.msg-wrapper.assistant .msg-meta');
+    if (firstMsgMeta) firstMsgMeta.textContent = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    renderSuggestions(DEFAULT_SUGGESTIONS);
+
+    // ========== 合同审查功能 ==========
+    const contractToggleBtn = document.getElementById('contractToggleBtn');
+    const contractPanel = document.getElementById('contractPanel');
+    const contractDropZone = document.getElementById('contractDropZone');
+    const contractFileInput = document.getElementById('contractFileInput');
+    const contractResult = document.getElementById('contractResult');
+    const contractLoading = document.getElementById('contractLoading');
+    const contractLoadingText = document.getElementById('contractLoadingText');
+
+    contractToggleBtn.addEventListener('click', function() {
+        if (contractPanel.style.display === 'none') {
+            contractPanel.style.display = 'block';
+            contractToggleBtn.classList.add('active');
+        } else {
+            contractPanel.style.display = 'none';
+            contractToggleBtn.classList.remove('active');
+        }
+    });
+
+    contractDropZone.addEventListener('click', function() {
+        contractFileInput.click();
+    });
+
+    contractDropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        contractDropZone.classList.add('dragover');
+    });
+    contractDropZone.addEventListener('dragleave', function() {
+        contractDropZone.classList.remove('dragover');
+    });
+    contractDropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        contractDropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            handleContractFile(e.dataTransfer.files[0]);
+        }
+    });
+    contractFileInput.addEventListener('change', function(e) {
+        if (e.target.files.length) {
+            handleContractFile(e.target.files[0]);
+        }
+    });
+
+    function handleContractFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        contractResult.style.display = 'none';
+        contractLoading.style.display = 'block';
+        contractLoadingText.textContent = '正在提取合同文本...';
+
+        fetch('/api/contract/review', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            contractLoading.style.display = 'none';
+            if (data.error) {
+                contractResult.innerHTML = '<div style="color:#e53935;padding:1rem;">❌ ' + data.error + '</div>';
+                contractResult.style.display = 'block';
+                return;
+            }
+            renderContractResult(data);
+        })
+        .catch(function(err) {
+            contractLoading.style.display = 'none';
+            contractResult.innerHTML = '<div style="color:#e53935;padding:1rem;">❌ 上传失败：' + err.message + '</div>';
+            contractResult.style.display = 'block';
+        });
+    }
+
+    function renderContractResult(data) {
+        const riskLevel = (data.risk_level || '未知').toLowerCase();
+        let riskClass = 'unknown';
+        if (riskLevel.indexOf('高') >= 0) riskClass = 'high';
+        else if (riskLevel.indexOf('中') >= 0) riskClass = 'medium';
+        else if (riskLevel.indexOf('低') >= 0) riskClass = 'low';
+
+        let html = '<div class="contract-summary">';
+        html += '<span class="risk-badge ' + riskClass + '">' + (data.risk_level || '未知') + '</span>';
+        html += '<span class="contract-summary-text">' + (data.summary || '') + '</span>';
+        html += '</div>';
+
+        // 风险问题
+        if (data.issues && data.issues.length) {
+            html += '<div class="contract-section">';
+            html += '<div class="contract-section-title"><i class="fas fa-exclamation-triangle" style="color:#e53935;"></i> 风险条款分析（' + data.issues.length + '条）</div>';
+            data.issues.forEach(function(issue) {
+                const sev = (issue.severity || '低').toLowerCase();
+                let sevClass = 'low';
+                if (sev.indexOf('高') >= 0) sevClass = 'high';
+                else if (sev.indexOf('中') >= 0) sevClass = 'medium';
+                html += '<div class="risk-item severity-' + sevClass + '">';
+                html += '<div class="risk-item-header">';
+                html += '<span class="risk-type-tag">' + (issue.risk_type || '其他') + '</span>';
+                html += '<span class="risk-severity-tag ' + sevClass + '">' + (issue.severity || '低') + '风险</span>';
+                html += '</div>';
+                if (issue.clause) {
+                    html += '<div class="risk-clause">📋 ' + issue.clause + '</div>';
+                }
+                if (issue.analysis) {
+                    html += '<div class="risk-analysis">' + issue.analysis + '</div>';
+                }
+                if (issue.suggestion) {
+                    html += '<div class="risk-suggestion">' + issue.suggestion + '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        // 对租客有利的条款
+        if (data.positive_points && data.positive_points.length) {
+            html += '<div class="contract-section">';
+            html += '<div class="contract-section-title"><i class="fas fa-thumbs-up" style="color:#43a047;"></i> 对租客有利的条款</div>';
+            html += '<ul class="positive-list">';
+            data.positive_points.forEach(function(p) {
+                html += '<li>' + p + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        // 缺失条款
+        if (data.missing_clauses && data.missing_clauses.length) {
+            html += '<div class="contract-section">';
+            html += '<div class="contract-section-title"><i class="fas fa-exclamation-circle" style="color:#fb8c00;"></i> 合同缺少的重要条款</div>';
+            html += '<ul class="missing-list">';
+            data.missing_clauses.forEach(function(m) {
+                html += '<li>' + m + '</li>';
+            });
+            html += '</ul></div>';
+        }
+
+        contractResult.innerHTML = html;
+        contractResult.style.display = 'block';
+    }
+
+    // ========== 用户系统 ==========
+    const API_BASE = '';
+    let currentUser = JSON.parse(localStorage.getItem('zhizu_user') || 'null');
+
+    const loginBtn = document.getElementById('loginBtn');
+    const userInfo = document.getElementById('userInfo');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const authModal = document.getElementById('authModal');
+    const authModalClose = document.getElementById('authModalClose');
+    const userCenterBtn = document.getElementById('userCenterBtn');
+    const userCenterPanel = document.getElementById('userCenterPanel');
+    const userCenterOverlay = document.getElementById('userCenterOverlay');
+    const userCenterClose = document.getElementById('userCenterClose');
+
+    function updateUserUI() {
+        if (currentUser) {
+            loginBtn.style.display = 'none';
+            userInfo.style.display = 'flex';
+            userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+            userName.textContent = currentUser.username;
+        } else {
+            loginBtn.style.display = 'block';
+            userInfo.style.display = 'none';
+        }
+    }
+
+    function showAuthModal(tab) {
+        authModal.style.display = 'flex';
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.auth-tab[data-tab="' + tab + '"]').classList.add('active');
+        document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    }
+
+    loginBtn.addEventListener('click', function() { showAuthModal('login'); });
+    authModalClose.addEventListener('click', function() { authModal.style.display = 'none'; });
+    authModal.addEventListener('click', function(e) { if (e.target === authModal) authModal.style.display = 'none'; });
+
+    document.querySelectorAll('.auth-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            showAuthModal(this.dataset.tab);
+        });
+    });
+
+    // 登录
+    document.getElementById('loginSubmit').addEventListener('click', function() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+        const btn = this;
+        if (!username || !password) { errorEl.textContent = '请输入用户名和密码'; return; }
+        btn.disabled = true;
+        btn.textContent = '登录中...';
+        errorEl.textContent = '';
+        fetch(API_BASE + '/api/auth/login', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password})
+        }).then(function(r) {
+            if (!r.ok) throw new Error('服务器响应错误 ' + r.status);
+            return r.json();
+        }).then(function(data) {
+            if (data.success) {
+                currentUser = {user_id: data.user_id, username: data.username};
+                localStorage.setItem('zhizu_user', JSON.stringify(currentUser));
+                updateUserUI();
+                authModal.style.display = 'none';
+                loadUserCenter();
+            } else {
+                errorEl.textContent = data.error || '登录失败';
+            }
+        }).catch(function(err) {
+            errorEl.textContent = '登录失败：' + err.message + '（请确认后端服务已重启）';
+        }).finally(function() {
+            btn.disabled = false;
+            btn.textContent = '登录';
+        });
+    });
+
+    // 注册
+    document.getElementById('registerSubmit').addEventListener('click', function() {
+        const username = document.getElementById('regUsername').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const phone = document.getElementById('regPhone').value.trim();
+        const errorEl = document.getElementById('registerError');
+        const btn = this;
+        if (!username || !password) { errorEl.textContent = '请输入用户名和密码'; return; }
+        btn.disabled = true;
+        btn.textContent = '注册中...';
+        errorEl.textContent = '';
+        fetch(API_BASE + '/api/auth/register', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username, password, phone})
+        }).then(function(r) {
+            if (!r.ok) throw new Error('服务器响应错误 ' + r.status);
+            return r.json();
+        }).then(function(data) {
+            if (data.success) {
+                currentUser = {user_id: data.user_id, username: data.username};
+                localStorage.setItem('zhizu_user', JSON.stringify(currentUser));
+                updateUserUI();
+                authModal.style.display = 'none';
+                loadUserCenter();
+            } else {
+                errorEl.textContent = data.error || '注册失败';
+            }
+        }).catch(function(err) {
+            errorEl.textContent = '注册失败：' + err.message + '（请确认后端服务已重启）';
+        }).finally(function() {
+            btn.disabled = false;
+            btn.textContent = '注册';
+        });
+    });
+
+    // 用户中心
+    function openUserCenter() {
+        userCenterOverlay.style.display = 'block';
+        userCenterPanel.classList.add('open');
+        loadUserCenter();
+    }
+    function closeUserCenter() {
+        userCenterOverlay.style.display = 'none';
+        userCenterPanel.classList.remove('open');
+    }
+    userCenterBtn.addEventListener('click', openUserCenter);
+    userCenterClose.addEventListener('click', closeUserCenter);
+    userCenterOverlay.addEventListener('click', closeUserCenter);
+
+    document.getElementById('ucLogout').addEventListener('click', function() {
+        currentUser = null;
+        localStorage.removeItem('zhizu_user');
+        updateUserUI();
+        closeUserCenter();
+    });
+
+    function loadUserCenter() {
+        if (!currentUser) return;
+        document.getElementById('ucUsername').textContent = currentUser.username;
+        // 加载偏好
+        fetch(API_BASE + '/api/user/profile', {headers: {'X-User-Id': currentUser.user_id}})
+        .then(r => r.json()).then(function(data) {
+            if (data.success) {
+                document.getElementById('ucFavCount').textContent = data.favorites_count;
+                const p = data.preferences || {};
+                document.getElementById('prefBudgetMin').value = p.budget_min || 0;
+                document.getElementById('prefBudgetMax').value = p.budget_max || 99999;
+                document.getElementById('prefDistricts').value = (p.preferred_districts || []).join(',');
+                document.getElementById('prefHouseType').value = p.preferred_house_type || '';
+            }
+        });
+        loadFavorites();
+        loadHistory();
+    }
+
+    // 保存偏好
+    document.getElementById('savePrefBtn').addEventListener('click', function() {
+        if (!currentUser) return;
+        const districts = document.getElementById('prefDistricts').value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+        fetch(API_BASE + '/api/user/preferences', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-User-Id': currentUser.user_id},
+            body: JSON.stringify({
+                budget_min: parseFloat(document.getElementById('prefBudgetMin').value) || 0,
+                budget_max: parseFloat(document.getElementById('prefBudgetMax').value) || 99999,
+                preferred_districts: districts,
+                preferred_house_type: document.getElementById('prefHouseType').value
+            })
+        }).then(r => r.json()).then(function(data) {
+            if (data.success) {
+                const btn = document.getElementById('savePrefBtn');
+                const orig = btn.textContent;
+                btn.textContent = '✓ 已保存';
+                setTimeout(function() { btn.textContent = orig; }, 1500);
+            }
+        });
+    });
+
+    // 收藏
+    function loadFavorites() {
+        if (!currentUser) return;
+        fetch(API_BASE + '/api/user/favorites', {headers: {'X-User-Id': currentUser.user_id}})
+        .then(r => r.json()).then(function(data) {
+            const container = document.getElementById('ucFavorites');
+            const compareBtn = document.getElementById('compareBtn');
+            if (!data.success || !data.favorites.length) {
+                container.innerHTML = '<div class="uc-empty">暂无收藏</div>';
+                compareBtn.style.display = 'none';
+                return;
+            }
+            container.innerHTML = data.favorites.map(function(f) {
+                return '<div class="uc-fav-item" data-id="' + f.id + '">' +
+                    '<input type="checkbox" class="fav-check" data-id="' + f.id + '">' +
+                    '<span class="fav-type">' + f.item_type + '</span>' +
+                    (f.item_title || '未命名') +
+                    '<button class="fav-del" data-id="' + f.id + '">×</button></div>';
+            }).join('');
+            // 删除按钮
+            container.querySelectorAll('.fav-del').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.dataset.id;
+                    fetch(API_BASE + '/api/user/favorites/' + id, {
+                        method: 'DELETE', headers: {'X-User-Id': currentUser.user_id}
+                    }).then(function() { loadFavorites(); });
+                });
+            });
+            // 复选框监听
+            container.querySelectorAll('.fav-check').forEach(function(cb) {
+                cb.addEventListener('change', updateCompareBtn);
+            });
+            updateCompareBtn();
+        });
+    }
+
+    function updateCompareBtn() {
+        const checked = document.querySelectorAll('.fav-check:checked');
+        const btn = document.getElementById('compareBtn');
+        if (checked.length >= 2) {
+            btn.style.display = 'inline-block';
+            btn.innerHTML = '<i class="fas fa-chart-pie"></i> 对比(' + checked.length + ')';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    // 雷达图对比
+    let _currentCompareIds = [];  // 当前选中的对比房源ID
+    const compareModal = document.getElementById('compareModal');
+    document.getElementById('compareModalClose').addEventListener('click', function() {
+        compareModal.style.display = 'none';
+    });
+    compareModal.addEventListener('click', function(e) {
+        if (e.target === compareModal) compareModal.style.display = 'none';
+    });
+
+    document.getElementById('compareBtn').addEventListener('click', function() {
+        const ids = Array.from(document.querySelectorAll('.fav-check:checked')).map(cb => parseInt(cb.dataset.id));
+        if (ids.length < 2) { alert('请至少选择2个房源'); return; }
+        if (ids.length > 3) { alert('最多对比3套房源'); return; }
+
+        _currentCompareIds = ids;
+        // 重置AI分析结果
+        document.getElementById('aiCompareResult').style.display = 'none';
+        document.getElementById('aiCompareContent').textContent = '';
+
+        compareModal.style.display = 'flex';
+        const chartDom = document.getElementById('radarChart');
+        chartDom.innerHTML = '<div style="text-align:center;padding:2rem;color:#90a4ae;"><i class="fas fa-spinner fa-spin"></i> 正在生成对比图...</div>';
+
+        fetch(API_BASE + '/api/user/favorites/compare', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-User-Id': currentUser.user_id},
+            body: JSON.stringify({ids: ids})
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            if (!data.success) {
+                chartDom.innerHTML = '<div style="text-align:center;padding:2rem;color:#e53935;">' + (data.error || '对比失败') + '</div>';
+                return;
+            }
+            renderRadarChart(data);
+        })
+        .catch(function(err) {
+            chartDom.innerHTML = '<div style="text-align:center;padding:2rem;color:#e53935;">对比失败：' + err.message + '</div>';
+        });
+    });
+
+    // AI智能对比分析
+    document.getElementById('aiCompareBtn').addEventListener('click', function() {
+        if (_currentCompareIds.length < 2) { alert('请先选择房源进行对比'); return; }
+        const btn = document.getElementById('aiCompareBtn');
+        const resultBox = document.getElementById('aiCompareResult');
+        const contentEl = document.getElementById('aiCompareContent');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI分析中...';
+        resultBox.style.display = 'block';
+        contentEl.textContent = '正在分析房源数据和用户画像，请稍候...';
+
+        fetch(API_BASE + '/api/user/favorites/ai-compare', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-User-Id': currentUser.user_id},
+            body: JSON.stringify({ids: _currentCompareIds})
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-robot"></i> 重新生成AI分析';
+            if (!data.success) {
+                contentEl.textContent = 'AI分析失败：' + (data.error || '未知错误');
+                return;
+            }
+            contentEl.textContent = data.ai_analysis || '暂无分析结果';
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-robot"></i> AI智能对比分析';
+            contentEl.textContent = 'AI分析失败：' + err.message;
+        });
+    });
+
+    function renderRadarChart(data) {
+        const chartDom = document.getElementById('radarChart');
+        const detailEl = document.getElementById('compareDetail');
+        const dims = data.dimensions || [];
+        const series = data.series || [];
+        const colors = ['#1976D2', '#ff9800', '#4caf50', '#e91e63', '#9c27b0'];
+        const rawKeys = ['area', 'price', 'floor', 'metro', 'spec', 'poi'];
+        if (!series.length) {
+            chartDom.innerHTML = '<div style="text-align:center;padding:2rem;color:#90a4ae;">暂无对比数据</div>';
+            detailEl.innerHTML = '';
+            return;
+        }
+        // 表格：行=对比维度，列=各房源（显示原始值 + 评分）
+        let html = '<div style="overflow-x:auto;">';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        html += '<thead><tr style="background:rgba(25,118,210,0.08);">';
+        html += '<th style="padding:10px 8px;text-align:left;color:#1565c0;font-weight:600;white-space:nowrap;">对比维度</th>';
+        series.forEach(function(s, i) {
+            html += '<th style="padding:10px 8px;color:' + colors[i % colors.length] + ';font-weight:600;text-align:center;white-space:nowrap;">' + s.name + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        dims.forEach(function(dim, di) {
+            html += '<tr style="border-bottom:1px solid #eef2f6;">';
+            html += '<td style="padding:10px 8px;font-weight:600;color:#455a64;white-space:nowrap;">' + dim + '</td>';
+            series.forEach(function(s, i) {
+                const rawVal = (s.raw && s.raw[rawKeys[di]]) || '-';
+                const score = (s.value && s.value[di] != null) ? s.value[di] : '-';
+                html += '<td style="padding:10px 8px;text-align:center;"><span style="color:#1A1B1C;">' + rawVal + '</span>' +
+                    ' <span style="color:#90a4ae;font-size:11px;">' + score + '分</span></td>';
+            });
+            html += '</tr>';
+        });
+        // 综合评分行
+        html += '<tr style="background:rgba(25,118,210,0.05);border-top:2px solid #1976D2;">';
+        html += '<td style="padding:10px 8px;font-weight:700;color:#1565c0;white-space:nowrap;">综合评分</td>';
+        series.forEach(function(s) {
+            const vals = s.value || [];
+            const avg = vals.length ? Math.round(vals.reduce(function(a, b) { return a + b; }, 0) / vals.length) : '-';
+            html += '<td style="padding:10px 8px;text-align:center;font-weight:700;color:#1976D2;">' + avg + '分</td>';
+        });
+        html += '</tr></tbody></table></div>';
+        chartDom.innerHTML = html;
+
+        // 详情卡片（保留）
+        detailEl.innerHTML = series.map(function(s, i) {
+            const r = s.raw || {};
+            return '<div class="compare-house-card" style="border-left-color:' + colors[i % colors.length] + '">' +
+                '<h5>' + s.name + '</h5>' +
+                '<p><strong>面积：</strong>' + (r.area || '未知') + '</p>' +
+                '<p><strong>价格：</strong>' + (r.price || '未知') + '</p>' +
+                '<p><strong>楼层：</strong>' + (r.floor || '未知') + '</p>' +
+                '<p><strong>户型：</strong>' + (r.spec || '未知') + '</p>' +
+                '<p><strong>地铁：</strong>' + (r.metro || '未知') + '</p>' +
+                '<p><strong>周边POI：</strong>' + (r.poi || '未知') + '</p>' +
+                '</div>';
+        }).join('');
+    }
+
+    // 历史
+    function loadHistory() {
+        if (!currentUser) return;
+        fetch(API_BASE + '/api/user/history?limit=30', {headers: {'X-User-Id': currentUser.user_id}})
+        .then(r => r.json()).then(function(data) {
+            const container = document.getElementById('ucHistory');
+            if (!data.success || !data.history.length) {
+                container.innerHTML = '<div class="uc-empty">暂无历史记录</div>';
+                return;
+            }
+            container.innerHTML = data.history.slice(-20).reverse().map(function(h) {
+                const role = h.role === 'user' ? '我' : '助手';
+                return '<div class="uc-history-item"><span class="hist-role">' + role + '：</span>' +
+                    (h.content || '').substring(0, 50) + '</div>';
+            }).join('');
+        });
+    }
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', function() {
+        if (!currentUser) return;
+        if (confirm('确定清空所有历史记录？')) {
+            fetch(API_BASE + '/api/user/history', {
+                method: 'DELETE', headers: {'X-User-Id': currentUser.user_id}
+            }).then(function() { loadHistory(); });
+        }
+    });
+
+    // 从回复文本中提取房源列表（仅识别真正的房源条目，避免把 POI/地铁/景点编号行误当房源）
+    function extractHouses(text) {
+        if (!text) return [];
+        // 房源强特征：必须带具体数据（数字+租金/面积/户型），避免把"请问租金范围""您想整租还是合租"等澄清/问句误判为房源。
+        // 纯 POI/地铁/景点输出（如"最近地铁：…"）不会命中；即使同一组合推荐里混排了 POI/地铁行，也只会识别真正的房源编号项。
+        function isHouseTxt(t) {
+            if (!t) return false;
+            // 强特征1：租金带数字（如 2000元/月、1500块/月、租金：2000、租金2000元）
+            if (/\d{3,6}\s*(?:元|块)\s*\/?\s*月/.test(t)) return true;
+            if (/租金\s*[:：]?\s*\d{3,6}/.test(t)) return true;
+            // 强特征2：面积带数字（如 89㎡、89.5平方米、89平米）
+            if (/\d+(?:\.\d+)?\s*(?:㎡|平方米|平米)/.test(t)) return true;
+            // 强特征3：户型格式（如 2室1厅、3室2卫、1室、3室1厅2卫）
+            if (/\d+\s*室(?:\s*\d+\s*厅)?(?:\s*\d+\s*卫)?/.test(t)) return true;
+            // 强特征4：整租/合租后跟具体房源标识（如 整租:主卧、合租·次卧）
+            if (/(?:整租|合租)\s*[:：·\.]\s*\S+/.test(t)) return true;
+            return false;
+        }
+        // 整段文本没有房源特征 → 不是房源列表，直接返回
+        if (!isHouseTxt(text)) return [];
+
+        // 1) 多行编号格式（house agent 标准输出）："1. xxx" 后跟 " - 朝向/地铁/详情" 续行
+        const lines = text.split('\n');
+        const houses = [];
+        let current = null;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            // 匹配编号开头：1. 或 1、 或 （1）
+            const match = line.match(/^(\d+)[.、\)）]\s*(.+)/);
+            if (match) {
+                if (current) houses.push(current);
+                current = { title: match[2].substring(0, 40), content: line };
+            } else if (current && line) {
+                // 续行内容
+                current.content += '\n' + line;
+                // 如果标题太短，用第一行补充
+                if (current.title.length < 10 && line.length > 5) {
+                    current.title = line.substring(0, 40);
+                }
+            }
+        }
+        if (current) houses.push(current);
+        // 逐条过滤：仅保留内容真正描述房源的编号项（注意：houses 元素是对象，必须取 content 字符串判断）
+        let result = houses.filter(function(h) { return isHouseTxt(h.content || ''); });
+
+        // 2) 若编号格式没提取到（如无编号单行："合租:主卧金水…｜ 188㎡ ｜ 租金 1000元/月"），
+        //    按行拆分，含房源特征的行独立成条，保证这类文本也能出现收藏按钮
+        if (result.length < 1) {
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (isHouseTxt(line)) {
+                    result.push({ title: line.substring(0, 40), content: line });
+                }
+            }
+        }
+        return result;
+    }
+
+
+    // ===== 智能体协作链路追踪面板（多智能体可观测性） =====
+    function renderTracePanel(wrapper, trace) {
+        if (!wrapper || !trace || !trace.steps || trace.steps.length === 0) return;
+        if (wrapper.querySelector('.trace-panel')) return;
+
+        const panel = document.createElement('div');
+        panel.className = 'trace-panel';
+
+        // 计算总耗时
+        const totalMs = trace.total_duration_ms || 0;
+        const successCount = trace.steps.filter(s => s.status === 'success').length;
+        const errorCount = trace.steps.length - successCount;
+
+        // 头部
+        const header = document.createElement('div');
+        header.className = 'trace-header';
+        header.innerHTML = `
+            <div class="trace-header-left">
+                <i class="fas fa-project-diagram"></i>
+                <span>智能体协作链路</span>
+                <span class="trace-stats">${trace.steps.length}个节点 · ${totalMs}ms</span>
+            </div>
+            <i class="fas fa-chevron-down trace-toggle"></i>
+        `;
+        header.addEventListener('click', function() {
+            panel.classList.toggle('collapsed');
+        });
+        panel.appendChild(header);
+
+        // 主体
+        const body = document.createElement('div');
+        body.className = 'trace-body';
+
+        // 时间线
+        const timeline = document.createElement('div');
+        timeline.className = 'trace-timeline';
+
+        trace.steps.forEach(function(step) {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'trace-step' + (step.status === 'error' ? ' error' : '');
+
+            const duration = step.duration_ms ? step.duration_ms + 'ms' : '-';
+            const inputText = step.input || '';
+            const outputText = step.output || '';
+
+            stepEl.innerHTML = `
+                <div class="trace-step-header">
+                    <div class="trace-step-title">
+                        <span class="trace-step-icon">${step.icon || '⚙️'}</span>
+                        <span>${step.display_name || step.name || step.agent_type}</span>
+                        <span class="trace-status-badge ${step.status}">${step.status === 'success' ? '成功' : '失败'}</span>
+                    </div>
+                    <span class="trace-step-duration">${duration}</span>
+                </div>
+                <div class="trace-step-detail">
+                    <div><span class="trace-step-detail-label">输入:</span><span class="trace-step-detail-content">${escapeHtml(inputText)}</span></div>
+                    <div style="margin-top:3px;"><span class="trace-step-detail-label">输出:</span><span class="trace-step-detail-content">${escapeHtml(outputText)}</span></div>
+                </div>
+            `;
+
+            // 点击展开/收起长文本
+            const contents = stepEl.querySelectorAll('.trace-step-detail-content');
+            contents.forEach(function(c) {
+                if (c.scrollHeight > c.offsetHeight + 5) {
+                    const btn = document.createElement('span');
+                    btn.className = 'trace-expand-btn';
+                    btn.textContent = '展开';
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        c.classList.toggle('expanded');
+                        btn.textContent = c.classList.contains('expanded') ? '收起' : '展开';
+                    });
+                    c.parentNode.appendChild(btn);
+                }
+            });
+
+            timeline.appendChild(stepEl);
+        });
+
+        body.appendChild(timeline);
+
+        // 底部统计
+        const footer = document.createElement('div');
+        footer.className = 'trace-footer';
+        footer.innerHTML = `
+            <span>链路追踪ID: ${trace.trace_id || '-'}</span>
+            <span>总耗时: <span class="trace-footer-total">${totalMs}ms</span></span>
+        `;
+        body.appendChild(footer);
+
+        panel.appendChild(body);
+        wrapper.appendChild(panel);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
+    // ===== 语音朗读（TTS，浏览器原生 SpeechSynthesis，配合语音输入形成问答闭环） =====
+    function attachTTSButton(wrapper, bubble) {
+        if (!bubble || !wrapper) return;
+        if (!('speechSynthesis' in window)) return;
+        if (wrapper.querySelector('.tts-btn')) return;
+        const ttsBtn = document.createElement('button');
+        ttsBtn.className = 'tts-btn';
+        ttsBtn.title = '语音朗读';
+        ttsBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        const meta = wrapper.querySelector('.msg-meta');
+        if (meta) {
+            meta.parentNode.insertBefore(ttsBtn, meta.nextSibling);
+        } else {
+            wrapper.appendChild(ttsBtn);
+        }
+        ttsBtn.addEventListener('click', function() {
+            const text = (bubble.textContent || '').trim();
+            if (!text) return;
+            if (window.__ttsUtter && window.__ttsUtter.speaking) {
+                speechSynthesis.cancel();
+                window.__ttsUtter = null;
+                ttsBtn.classList.remove('speaking');
+                ttsBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                return;
+            }
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'zh-CN';
+            utter.rate = 1.0;
+            utter.pitch = 1.0;
+            const voices = speechSynthesis.getVoices();
+            let zh = null;
+            for (let i = 0; i < voices.length; i++) {
+                if (/zh[-_]CN/i.test(voices[i].lang) || /chinese/i.test(voices[i].name)) { zh = voices[i]; break; }
+            }
+            if (zh) utter.voice = zh;
+            const reset = function() {
+                window.__ttsUtter = null;
+                ttsBtn.classList.remove('speaking');
+                ttsBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            };
+            utter.onend = reset;
+            utter.onerror = reset;
+            window.__ttsUtter = utter;
+            ttsBtn.classList.add('speaking');
+            ttsBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utter);
+        });
+    }
+    // 预加载语音列表（部分浏览器需要触发一次）
+    if ('speechSynthesis' in window && speechSynthesis.getVoices) {
+        speechSynthesis.getVoices();
+        speechSynthesis.onvoiceschanged = function() { speechSynthesis.getVoices(); };
+    }
+
+    // ===== 房源结构化卡片渲染 =====
+    function renderHouseCards(target, text) {
+        const houses = extractHouses(text);
+        if (!target || houses.length < 1) return;
+
+        function parseHouseCard(content) {
+            const firstLine = String(content).split('\n')[0] || String(content);
+            const card = { title: '', district: '', layout: '', area: '', rent: '', orientation: '', floor: '', metro: '', url: '' };
+            card.title = firstLine.replace(/^\d+[.、\)）]\s*/, '').replace(/\*\*/g, '').split('｜')[0].trim();
+            const distMatch = firstLine.match(/[（(]([^（）()]+?)[）)]/);
+            if (distMatch) card.district = distMatch[1];
+            const areaMatch = String(content).match(/(\d+(?:\.\d+)?)\s*(?:㎡|平方米|平米)/);
+            if (areaMatch) card.area = areaMatch[1] + '㎡';
+            const rentMatch = String(content).match(/(\d{3,6})\s*(?:元|块)\s*(?:\/)?\s*月?/);
+            if (rentMatch) card.rent = rentMatch[1] + '元/月';
+            const layoutMatch = firstLine.match(/(\d+\s*室\s*\d*\s*厅?[\d\s]*卫?|主卧|次卧|整租|合租)/);
+            if (layoutMatch) card.layout = layoutMatch[1];
+            const orientMatch = String(content).match(/朝向[:：]\s*([^\s｜|]+)/);
+            if (orientMatch) card.orientation = orientMatch[1];
+            const floorMatch = String(content).match(/楼层[:：]\s*([^\s｜|]+)/);
+            if (floorMatch) card.floor = floorMatch[1];
+            const metroMatch = String(content).match(/地铁[:：]\s*([^\n]+)/);
+            if (metroMatch) card.metro = metroMatch[1].trim();
+            const urlMatch = String(content).match(/https?:\/\/[^\s\)\]】]+/);
+            if (urlMatch) card.url = urlMatch[0];
+            return card;
+        }
+
+        const cards = houses.map(function(h) { return parseHouseCard(h.content || h.title); });
+        const container = document.createElement('div');
+        container.className = 'house-cards';
+        container.__houseList = houses;
+        let html = '';
+        cards.forEach(function(card, idx) {
+            html += '<div class="house-card">';
+            html += '<div class="house-card-head">' +
+                '<span class="house-card-idx">' + (idx + 1) + '</span>' +
+                '<span class="house-card-title">' + escapeHtml(card.title) + '</span>';
+            if (card.district) html += '<span class="house-card-district">' + escapeHtml(card.district) + '</span>';
+            html += '<button class="house-card-fav" data-idx="' + idx + '" title="收藏该房源"><i class="far fa-star"></i></button>';
+            html += '</div>';
+            html += '<div class="house-card-grid">';
+            if (card.rent) html += '<div class="house-card-cell rent"><span class="lbl">租金</span><span class="val">' + escapeHtml(card.rent) + '</span></div>';
+            if (card.area) html += '<div class="house-card-cell"><span class="lbl">面积</span><span class="val">' + escapeHtml(card.area) + '</span></div>';
+            if (card.layout) html += '<div class="house-card-cell"><span class="lbl">户型</span><span class="val">' + escapeHtml(card.layout) + '</span></div>';
+            if (card.orientation) html += '<div class="house-card-cell"><span class="lbl">朝向</span><span class="val">' + escapeHtml(card.orientation) + '</span></div>';
+            if (card.floor) html += '<div class="house-card-cell"><span class="lbl">楼层</span><span class="val">' + escapeHtml(card.floor) + '</span></div>';
+            if (card.metro) html += '<div class="house-card-cell metro"><span class="lbl">地铁</span><span class="val">' + escapeHtml(card.metro) + '</span></div>';
+            html += '</div>';
+            if (card.url) html += '<div class="house-card-link"><a href="' + escapeHtml(card.url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> 查看详情</a></div>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+        // 事件委托：点击卡片内的收藏按钮
+        container.addEventListener('click', function(e) {
+            const btn = e.target.closest('.house-card-fav');
+            if (!btn) return;
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            const house = container.__houseList[idx];
+            if (house) toggleHouseFavorite(btn, house);
+        });
+        target.appendChild(container);
+    }
+
+    // ===== 卡片内收藏按钮逻辑（收藏只限房源，已做进房源卡片） =====
+    function toggleHouseFavorite(btn, house) {
+        if (!currentUser) {
+            showAuthModal('login');
+            alert('请先登录后再收藏房源');
+            return;
+        }
+        fetch(API_BASE + '/api/user/favorites', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-User-Id': currentUser.user_id},
+            body: JSON.stringify({
+                item_type: '房源',
+                item_title: house.title,
+                item_data: {content: house.content}
+            })
+        }).then(r => r.json()).then(function(data) {
+            if (data.success) {
+                btn.classList.add('favorited');
+                btn.innerHTML = '<i class="fas fa-star"></i>';
+            } else {
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(function() { btn.innerHTML = '<i class="far fa-star"></i>'; }, 1500);
+            }
+        }).catch(function() {
+            alert('收藏失败，请稍后重试');
+        });
+    }
+
+    // 收藏仅限房源：route=agent + 后端 fav 标记（房源/组合推荐 agent 产出）时才显示卡片上的收藏按钮
+    // 法律/闲聊/纯POI/纯地铁 一律不显示
+    function addFavButtonToMessage(msgEl, text, route, fav) {
+        if (route !== 'agent') return;
+        if (!(fav === true || fav === 'true')) return;
+        const btns = msgEl.querySelectorAll('.house-card-fav');
+        btns.forEach(function(btn) { btn.style.display = 'inline-flex'; });
+    }
+
+    updateUserUI();
+})();
+</script>
+</body>
+</html>

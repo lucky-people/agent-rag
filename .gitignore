@@ -1,0 +1,95 @@
+# ========== 敏感信息：禁止上传 ==========
+# 所有真实密钥统一放在 config_local/ 目录（含 config.ini、keys.py），
+# 开源时整个目录不上传；模板文件（*.example）正常提交
+config_local/
+
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ========== 虚拟环境 ==========
+venv/
+env/
+.venv/
+ENV/
+
+# ========== IDE / 编辑器 ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.claude/
+
+# ========== 日志 ==========
+logs/
+*.log
+
+# ========== 模型文件（体积大，可从 HuggingFace 重新下载） ==========
+Agent/legal_qa/rag_qa/models/
+*.h5
+*.hdf5
+*.pth
+*.pt
+*.onnx
+*.pb
+*.tflite
+*.pkl
+
+# ========== 数据库 / 数据文件 ==========
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# ========== 媒体文件（演示视频等大文件） ==========
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.webm
+*.mp3
+*.wav
+图片/
+
+# ========== 操作系统 ==========
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========== 测试 / 中间产物 ==========
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+*.cover
+实验脚本/results/
+实验脚本/data/
+
+# ========== 临时文件 ==========
+*.tmp
+*.bak
+*.swp
+._*

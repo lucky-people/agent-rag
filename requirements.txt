@@ -1,0 +1,62 @@
+# ============================================================
+# 基于多智能体与RAG的智能租房咨询系统 - 依赖清单
+# 环境: Python 3.10+ / conda 虚拟环境 lang_env
+# 安装: pip install -r requirements.txt
+# ============================================================
+
+# ---------- 核心依赖（主链路必需） ----------
+# Web 服务
+Flask==3.1.1
+fastapi==0.116.1
+
+# LLM / 向量模型
+openai==1.97.1
+sentence-transformers==5.7.0
+transformers==4.54.1
+torch==2.13.0+cu132
+torchvision==0.28.0+cu132
+
+# LangChain 框架
+langchain==0.3.26
+langchain-community==0.3.27
+langchain-core==0.3.72
+langchain-openai==0.3.28
+langchain-text-splitters==0.3.9
+
+# 多智能体协议（A2A / MCP）
+python-a2a==0.5.4
+mcp==1.18.0
+
+# 数据存储
+pymilvus==3.0.1
+milvus-model==0.2.12
+PyMySQL==1.1.1
+mysql-connector-python==9.4.0
+redis==8.1.0
+
+# 数据处理 / 检索
+numpy==2.3.2
+pandas==2.3.1
+scikit-learn==1.9.0
+rank-bm25==0.2.2
+jieba==0.42.1
+matplotlib==3.11.1
+tqdm==4.67.1
+
+# 网络 / 解析
+requests==2.32.4
+beautifulsoup4==4.13.4
+pymupdf==1.28.2
+certifi==2025.7.14
+python-dotenv==1.1.1
+pytz==2025.2
+pillow==11.3.0
+
+# 浏览器自动化（爬虫）
+playwright==1.40.0
+
+# ---------- 可选依赖（文档入库 / OCR 功能，按需安装） ----------
+# 以下模块仅用于 "文档入库 / OCR 识别" 功能，主查询链路不需要。
+# 如需使用文档加载器（edu_document_loaders），请安装：
+# python-docx、python-pptx、pypdf、pdfplumber、
+# opencv-python、rapidocr-onnxruntime、rapidocr-paddle、modelscope

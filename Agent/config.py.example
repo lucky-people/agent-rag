@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+文件名: config.py.example
+说明: 脱敏后的配置模板。复制为 config.py 使用，密钥从环境变量读取：
+    export DASHSCOPE_API_KEY="你的密钥"
+    export MYSQL_PASSWORD="你的密码"
+"""
+
+import os
+
+# 项目根目录
+project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+
+# 测试环境
+env = "test"
+
+
+class Config:
+
+    def __init__(self):
+        # 大模型配置（从环境变量读取，避免硬编码密钥）
+        self.base_url = os.getenv(
+            "DASHSCOPE_BASE_URL",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        )
+        self.api_key = os.getenv("DASHSCOPE_API_KEY", "")
+        self.model_name = "qwen3.8-max"
+
+        # 数据库配置（从环境变量读取）
+        self.host = os.getenv("MYSQL_HOST", "localhost")
+        self.user = os.getenv("MYSQL_USER", "root")
+        self.password = os.getenv("MYSQL_PASSWORD", "")
+        self.database = "rental"
+
+        # 日志配置
+        self.log_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'logs', 'zhizu_advisor.log'
+        )
+
+        # 票务查询的12306接口地址
+        self.url_123 = ""
+
+        self.intent = {
+            "house": "HouseQueryAssistant",
+            "poi": "PoiQueryAssistant",
+            "metro": "MetroQueryAssistant",
+            "recommend": "RecommendQueryAssistant",
+            "legal": "LegalQASystem",
+            "chat": "ChatLLM"
+        }
+
+        self.temperature = 0.1
+
+        # 是否启用大模型二次总结
+        self.use_llm_summary = False
+
+        # 是否启用租房知识普及
+        self.enable_rental_tips = True
+
+    def get_mysql_config(self, env):
+        """
+        通过不同的环境获取不同的数据库配置
+        :return:
+        """
+        if env == 'prod':
+            self.host = os.getenv("MYSQL_HOST", "localhost")
+            self.user = os.getenv("MYSQL_USER", "root")
+            self.password = os.getenv("MYSQL_PASSWORD", "")
+            self.database = 'rental'
+        elif env == 'dev':
+            self.host = os.getenv("MYSQL_HOST", "localhost")
+            self.user = os.getenv("MYSQL_USER", "root")
+            self.password = os.getenv("MYSQL_PASSWORD", "")
+            self.database = 'rental'
+        else:
+            self.host = os.getenv("MYSQL_HOST", "localhost")
+            self.user = os.getenv("MYSQL_USER", "root")
+            self.password = os.getenv("MYSQL_PASSWORD", "")
+            self.database = 'rental'
+
+        return self.host, self.user, self.password, self.database
+
+
+if __name__ == '__main__':
+    print(Config().log_file)
+    print(Config().get_mysql_config(env))
