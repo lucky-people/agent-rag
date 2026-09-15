@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 文件名: create_logger.py
-作者: ZZS
-项目: LlmProject
+作者: 高帅舟
+项目: 智租顾问（多智能体+RAG租房咨询系统）
 创建日期: 2026/2/4
 描述: 
 """

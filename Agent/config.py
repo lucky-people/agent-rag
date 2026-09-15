@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 文件名: config.py
-作者: ZZS
-项目: LlmProject
+作者: 高帅舟
+项目: 智租顾问（多智能体+RAG租房咨询系统）
 创建日期: 2026/1/17
 描述: 
 """
@@ -67,8 +67,6 @@ class Config:
         # 日志配置 - 统一输出到 Agent/logs/zhizu_advisor.log
         self.log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs', 'zhizu_advisor.log')
 
-        # （原票务系统遗留字段，保留兼容）
-        self.url_123 = ""
 
         self.intent = {
             "house": "HouseQueryAssistant",

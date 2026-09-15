@@ -38,8 +38,6 @@ class Config:
             os.path.dirname(os.path.abspath(__file__)), 'logs', 'zhizu_advisor.log'
         )
 
-        # 票务查询的12306接口地址
-        self.url_123 = ""
 
         self.intent = {
             "house": "HouseQueryAssistant",
