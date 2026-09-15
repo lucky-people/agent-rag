@@ -15,6 +15,7 @@
 
 import asyncio
 import json
+import time
 from datetime import datetime
 import pytz
 
@@ -128,7 +129,11 @@ class Text2SqlAgentServer(A2AServer):
                     task.status = TaskStatus(state=TaskState.COMPLETED)
                     return task
                 elif response.get("status") == "connection_error":
-                    # 基础设施故障（MCP未启动/超时）→ 直接失败，不浪费 LLM 调用去"修正SQL"
+                    # 基础设施故障（MCP未启动/超时）→ 瞬时故障自动重试（不浪费 LLM 调用去"修正SQL"）
+                    if attempt < max_attempts:
+                        logger.warning(f"连接失败（第 {attempt}/{max_attempts} 次）：{response.get('message', '')}，0.5s 后自动重试...")
+                        time.sleep(0.5)  # 短暂等待，给服务恢复时间
+                        continue
                     task.status = TaskStatus(state=TaskState.FAILED,
                                              message={"role": "agent",
                                                       "content": {"text": response.get("message", "服务暂不可用，请稍后重试。")}})
