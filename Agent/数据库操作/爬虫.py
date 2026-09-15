@@ -2,16 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 文件名: 爬虫.py
-描述: 房天下郑州租房爬虫
-修复说明:
-  1.【关键】删除自定义 User-Agent。原来写死的 Chrome/120 UA 与真实 Chromium 版本
-     不一致，WAF 做 UA 一致性检测后判定为爬虫，直接返回滑块验证页（页面无 dl.list）。
-     改用 Playwright 默认 UA（与内置 Chromium 版本一致）后验证通过。
-  2. 抓取改为"每次尝试新建独立浏览器上下文"，模拟新访客，避免风控持续拦截。
-  3. goto 后先检测是否被弹验证码；被弹时自动拖动滑块通过验证（solve_slider）。
-  4. 通过验证后把 cookie（otherid）缓存并带到后续页面，减少重复触发验证码。
-  5. 连续失败时加入长时间冷却，等 IP 风控降级。
-  6. 保留数据库与解析逻辑不变。
+描述: 房天下郑州租房爬虫（合规开源版）
+说明:
+  1. 本脚本只做公开网页的常规抓取与解析，遵守 robots 协议与网站访问频率限制。
+  2. 不含任何验证码破解、反自动化检测绕过逻辑；如遇平台风控拦截，
+     请暂停抓取并等待一段时间后再运行，或改用平台官方数据接口。
+  3. 数据仅用于学习研究，请勿用于商业用途。
 """
 
 import time
@@ -24,11 +20,30 @@ import mysql.connector
 from mysql.connector import Error
 
 # ==================== 数据库配置 ====================
+# ========== 密钥加载（优先环境变量，其次 config_local/keys.py） ==========
+# config_local/ 已被 .gitignore 排除，不会上传到仓库
+import importlib.util as _ilu
+
+_LOCAL_KEYS = None
+_keys_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'config_local', 'keys.py'
+)
+if os.path.exists(_keys_path):
+    _spec = _ilu.spec_from_file_location('local_keys', _keys_path)
+    _LOCAL_KEYS = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_LOCAL_KEYS)
+
+DB_PASSWORD = os.getenv("MYSQL_PASSWORD", "") or (
+    getattr(_LOCAL_KEYS, 'MYSQL_PASSWORD', '') if _LOCAL_KEYS else ""
+) or "YOUR_MYSQL_PASSWORD"
+# ======================================================
+
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
-    'password': '123456',      # 改成你的密码
-    'database': 'rental',      # 改成你的数据库名
+    'password': DB_PASSWORD,
+    'database': 'rental',
     'charset': 'utf8mb4'
 }
 
@@ -40,13 +55,6 @@ LAUNCH_ARGS = [
     '--no-sandbox',
     '--disable-dev-shm-usage'
 ]
-
-# 反自动化检测脚本（try/catch 包裹，即使某一行失败也不影响页面加载）
-STEALTH_JS = """
-try { Object.defineProperty(navigator, 'webdriver', {get: () => undefined}); } catch (e) {}
-try { Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]}); } catch (e) {}
-window.chrome = window.chrome || { runtime: {} };
-"""
 
 # ==================== 数据库操作 ====================
 def get_db_connection():
@@ -217,74 +225,11 @@ def parse_house_item(item):
         print(f"⚠️ 解析单个房源失败: {e}")
         return None
 
-# ==================== 抓取函数 ====================
-def is_captcha_page(page):
-    """判断当前页面是否被风控拦截（滑块验证页）"""
-    try:
-        title = page.title()
-        if any(k in title for k in ("验证", "安全", "verify", "captcha")):
-            return True
-        body = page.locator("body").inner_text(timeout=3000)[:300]
-        if any(k in body for k in ("请完成下列验证", "滑动", "拖动滑块", "验证码")):
-            return True
-    except Exception:
-        pass
-    return False
-
-# 通过滑块验证后，把当前会话 cookie（含 otherid）存下来，后续页面带上可减少重复验证码
-TRUSTED_COOKIES = []
-
-def solve_slider(page, max_wait=15):
-    """自动拖动滑块完成人机验证。
-
-    房天下的滑块是"拖到底"型（无缺口背景图），拖到最右端触发 complete，
-    页面会带着 backurl 跳回目标页。成功后返回 True。
-    """
-    try:
-        slider = page.locator("#slider")
-        handler = page.locator(".handler")
-        slider.wait_for(state="visible", timeout=8000)
-        handler.wait_for(state="visible", timeout=8000)
-    except Exception as e:
-        print(f"   ❌ 滑块元素未出现: {e}")
-        return False
-
-    sb = slider.bounding_box()
-    hb = handler.bounding_box()
-    if not sb or not hb:
-        print("   ❌ 拿不到滑块/手柄坐标")
-        return False
-
-    start_x = hb["x"] + hb["width"] / 2
-    start_y = hb["y"] + hb["height"] / 2
-    target_x = sb["x"] + sb["width"] - hb["width"] / 2
-    print(f"   🎯 拖拽滑块 {start_x:.0f} -> {target_x:.0f}")
-
-    page.mouse.move(start_x, start_y)
-    page.mouse.down()
-    # 分段移动模拟真人，最后一段必须落到最右端
-    steps = 25
-    for i in range(1, steps + 1):
-        page.mouse.move(
-            start_x + (target_x - start_x) * i / steps,
-            start_y + random.uniform(-0.8, 0.8),
-        )
-        time.sleep(0.02 + random.uniform(0, 0.01))
-    page.mouse.up()
-    print("   👆 已松开，等待跳转回原页面...")
-
-    # 跳转会销毁页面上下文，直接等目标页的 dl.list 出现即可
-    try:
-        page.wait_for_selector("dl.list", timeout=max_wait * 1000)
-        return True
-    except Exception:
-        return False
-
 def fetch_page_html(browser, page_num, max_retries=3):
-    """抓取一页房源列表 HTML。
+    """抓取一页房源列表 HTML（合规版）。
 
-    每次尝试都新建一个干净的浏览器上下文（新指纹），相当于一个新访客，
-    避免风控在同一个会话上持续拦截；也能把偶发的网络错误隔离开。
+    每次请求之间间隔随机等待，遵守网站访问频率限制；若页面被平台风控拦截
+    （返回验证页或空列表），按失败处理并等待后重试，不绕过任何验证机制。
     """
     if page_num == 1:
         url = "https://zu.fang.com/zz/house1/"
@@ -292,38 +237,16 @@ def fetch_page_html(browser, page_num, max_retries=3):
         url = f"https://zu.fang.com/zz/house1/i{page_num}/"
     print(f"📥 正在抓取第 {page_num} 页: {url}")
 
-    global TRUSTED_COOKIES
     for attempt in range(1, max_retries + 1):
-        # 新建独立上下文 + 页面，模拟新访客
         context = browser.new_context(
             viewport={"width": 1366, "height": 768},
             locale="zh-CN",
         )
-        # 带上之前验证通过的 cookie（含 otherid），减少重复触发验证码
-        if TRUSTED_COOKIES:
-            try:
-                context.add_cookies(TRUSTED_COOKIES)
-            except Exception:
-                pass
         page = context.new_page()
-        page.add_init_script(STEALTH_JS)
         try:
             page.goto(url, timeout=60000, wait_until="domcontentloaded")
 
-            # 1) 先检测是否被弹验证码；若被弹，尝试自动拖动滑块通过
-            if is_captcha_page(page):
-                print("🛠 检测到滑块验证码，尝试自动拖动通过...")
-                solved = solve_slider(page)
-                if solved:
-                    print("   ✅ 滑块验证通过，已回到目标页面")
-                    # 记住本次验证后的 cookie，后续页面复用
-                    TRUSTED_COOKIES = context.cookies()
-                else:
-                    shot = f"captcha_{page_num}_a{attempt}.png"
-                    page.screenshot(path=shot)
-                    raise RuntimeError(f"滑块自动验证失败，截图已保存 {shot}")
-
-            # 2) 等房源列表渲染完成
+            # 等房源列表渲染完成；若被风控拦截（页面无 dl.list），视为失败
             page.wait_for_selector("dl.list", timeout=20000)
             time.sleep(random.uniform(1.2, 2.5))
             # 模拟滚动加载懒数据
@@ -367,7 +290,7 @@ def spider_house(total_pages=20):
                 print(f"⚠️ 第 {page_num} 页抓取失败，跳过")
                 if consecutive_fails >= 2:
                     cooldown = random.uniform(60, 120)
-                    print(f"⏳ 连续失败 {consecutive_fails} 次，冷却 {cooldown:.0f} 秒（让IP风控降级）...")
+                    print(f"⏳ 连续失败 {consecutive_fails} 次，暂停 {cooldown:.0f} 秒后重试...")
                     time.sleep(cooldown)
                 else:
                     time.sleep(random.uniform(12, 20))

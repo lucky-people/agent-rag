@@ -42,13 +42,13 @@ class Config:
         # # 3.1 解析MySQL数据库配置.
         # self.MYSQL_HOST = self.config.get('mysql', 'host', fallback='localhost')
         # self.MYSQL_USER = self.config.get('mysql', 'user', fallback='root')
-        # self.MYSQL_PASSWORD = self.config.get('mysql', 'password', fallback='123456')
+        # self.MYSQL_PASSWORD = self.config.get('mysql', 'password', fallback='')
         # self.MYSQL_DATABASE = self.config.get('mysql', 'database', fallback='subjects_kg')
         #
         # # 3.2 解析Redis数据库配置.
         # self.REDIS_HOST = self.config.get('redis', 'host', fallback='localhost')
         # self.REDIS_PORT = self.config.get('redis', 'port', fallback=6379)
-        # self.REDIS_PASSWORD = self.config.get('redis', 'password', fallback='1234')
+        # self.REDIS_PASSWORD = self.config.get('redis', 'password', fallback='')
         # self.REDIS_DB = self.config.get('redis', 'db', fallback=0)
         #
         # # 3.3 解析日志配置.
@@ -82,7 +82,7 @@ class Config:
         # MySQL 用户名
         self.MYSQL_USER = os.getenv('MYSQL_USER', self.config.get('mysql', 'user', fallback='root'))
         # MySQL 密码
-        self.MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', self.config.get('mysql', 'password', fallback='123456'))
+        self.MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', self.config.get('mysql', 'password', fallback=''))
         # MySQL 数据库名
         self.MYSQL_DATABASE = os.getenv('MYSQL_DATABASE',
                                         self.config.get('mysql', 'database', fallback='laws_all'))
@@ -93,7 +93,7 @@ class Config:
         # Redis 端口
         self.REDIS_PORT = int(os.getenv('REDIS_PORT', self.config.get('redis', 'port', fallback=6379)))
         # Redis 密码
-        self.REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', self.config.get('redis', 'password', fallback='1234'))
+        self.REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', self.config.get('redis', 'password', fallback=''))
         # Redis 数据库编号
         self.REDIS_DB = int(os.getenv('REDIS_DB', self.config.get('redis', 'db', fallback=0)))
 
@@ -133,9 +133,13 @@ class Config:
         self.CANDIDATE_M = self.config.getint('retrieval', 'candidate_m', fallback=2)
 
         # 应用配置
-        # 有效来源列表
-        self.VALID_SOURCES = eval(
-            self.config.get('app', 'valid_sources', fallback='["ai", "java", "test", "ops", "bigdata"]'))
+        # 有效来源列表（安全解析，避免 eval 执行任意表达式）
+        import json as _json
+        _raw = self.config.get('app', 'valid_sources', fallback='["ai", "java", "test", "ops", "bigdata"]')
+        try:
+            self.VALID_SOURCES = _json.loads(_raw)
+        except Exception:
+            self.VALID_SOURCES = ["ai", "java", "test", "ops", "bigdata"]
         # 客服电话
         self.CUSTOMER_SERVICE_PHONE = self.config.get('app', 'customer_service_phone', fallback='13112345678')
 

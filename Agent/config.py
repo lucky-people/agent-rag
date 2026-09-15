@@ -44,14 +44,17 @@ class Config:
 
     def __init__(self):
         # 大模型配置（密钥从 config_local/keys.py 或环境变量读取）
-        self.base_url = os.getenv(
-            "DASHSCOPE_BASE_URL",
-            "https://llm-zaievvsekl2smdkd.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
-        )
+        # 优先级：环境变量 > config_local/keys.py > 公共默认端点（DashScope）
+        # 私有网关地址写在 config_local/keys.py 中，不会上传到开源仓库
+        self.base_url = os.getenv("DASHSCOPE_BASE_URL", "") or (
+            getattr(_local_keys, 'DASHSCOPE_BASE_URL', '') if _local_keys else ""
+        ) or "https://dashscope.aliyuncs.com/compatible-mode/v1"
         self.api_key = os.getenv("DASHSCOPE_API_KEY", "") or (
             getattr(_local_keys, 'DASHSCOPE_API_KEY', '') if _local_keys else ""
         )
-        self.model_name = "qwen3.8-max"
+        self.model_name = os.getenv("DASHSCOPE_MODEL", "") or (
+            getattr(_local_keys, 'DASHSCOPE_MODEL', '') if _local_keys else ""
+        ) or "qwen-plus"
 
         # 数据库配置（密码从 config_local/keys.py 或环境变量读取）
         self.host = os.getenv("MYSQL_HOST", 'localhost')

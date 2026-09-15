@@ -6,13 +6,32 @@
 """
 
 import math
+import os
+import importlib.util as _ilu
 import mysql.connector
 from mysql.connector import Error
+
+# ========== 密钥加载（优先环境变量，其次 config_local/keys.py） ==========
+# config_local/ 已被 .gitignore 排除，不会上传到仓库
+_LOCAL_KEYS = None
+_keys_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'config_local', 'keys.py'
+)
+if os.path.exists(_keys_path):
+    _spec = _ilu.spec_from_file_location('local_keys', _keys_path)
+    _LOCAL_KEYS = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_LOCAL_KEYS)
+
+DB_PASSWORD = os.getenv("MYSQL_PASSWORD", "") or (
+    getattr(_LOCAL_KEYS, 'MYSQL_PASSWORD', '') if _LOCAL_KEYS else ""
+) or "YOUR_MYSQL_PASSWORD"
+# ======================================================
 
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
-    'password': '123456',
+    'password': DB_PASSWORD,
     'database': 'rental',
     'charset': 'utf8mb4'
 }
