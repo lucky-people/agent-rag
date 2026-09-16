@@ -32,16 +32,6 @@
 
 <img src="docs/screenshots/02-house-recommend.png" width="820"/>
 
-**③ 真实数据底座**：房源数据来自房天下郑州站真实采集（整租 646 条 / 合租 83 条），POI 与地铁数据来自高德开放平台
-
-| 房源真实数据（房天下） | POI 周边数据（MySQL） |
-|:---:|:---:|
-| <img src="docs/screenshots/03-data-source-house.png" width="400"/> | <img src="docs/screenshots/04-data-poi.png" width="400"/> |
-
-**④ 向量检索基础设施**：法律知识库以 BGE-M3 **稠密 + 稀疏双向量**存入 Milvus
-
-<img src="docs/screenshots/05-data-milvus.png" width="820"/>
-
 ---
 
 ## ✨ 亮眼功能
