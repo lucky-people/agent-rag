@@ -33,7 +33,8 @@ llm = ChatOpenAI(
     model=conf.model_name,
     base_url=conf.base_url,
     api_key=conf.api_key,
-    temperature=0.1
+    temperature=0.1,
+    request_timeout=10
 )
 
 # 数据表 schema
@@ -134,7 +135,7 @@ async def get_metro(sql):
                 return result_data.content[0].text
 
     try:
-        return await asyncio.wait_for(_call(), timeout=15)
+        return await asyncio.wait_for(_call(), timeout=25)
     except asyncio.TimeoutError:
         logger.error("地铁 MCP 调用超时（15s）")
         return {"status": "connection_error", "message": "地铁 服务响应超时，请稍后重试。"}

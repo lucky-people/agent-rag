@@ -36,7 +36,8 @@ llm = ChatOpenAI(
     model=conf.model_name,
     base_url=conf.base_url,
     api_key=conf.api_key,
-    temperature=0.1
+    temperature=0.1,
+    request_timeout=10
 )
 
 # 数据表 schema
@@ -145,7 +146,7 @@ async def get_recommend(sql):
                 return result_data.content[0].text
 
     try:
-        return await asyncio.wait_for(_call(), timeout=15)
+        return await asyncio.wait_for(_call(), timeout=25)
     except asyncio.TimeoutError:
         logger.error("综合推荐 MCP 调用超时（15s）")
         return {"status": "connection_error", "message": "综合推荐 服务响应超时，请稍后重试。"}
@@ -281,7 +282,7 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
             logger.error(f"编排拆解失败，回退单域: {str(e)}")
         return {"domains": ["house"], "sub_queries": {"house": conversation}}
 
-    async def _call_sub_agent(self, intent_name: str, url: str, sub_query: str, timeout: float = 20.0):
+    async def _call_sub_agent(self, intent_name: str, url: str, sub_query: str, timeout: float = 30.0):
         """调用单个子Agent，返回 (域, 文本结果, 状态, 耗时ms)；失败返回 None"""
         import time as _t
         _start = _t.time()

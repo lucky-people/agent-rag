@@ -549,7 +549,7 @@ def chat_stream():
                         _hist = '\n'.join(sess["history"].split("\n")[-7:-1]) + f'\nUser: {_q}'
                         _msg = Message(content=TextContent(text=_hist), role=MessageRole.USER)
                         _task = Task(id="task-" + str(uuid.uuid4()), message=_msg.to_dict())
-                        _raw = asyncio.run(asyncio.wait_for(_agent.send_task_async(_task), timeout=15))
+                        _raw = asyncio.run(asyncio.wait_for(_agent.send_task_async(_task), timeout=30))
                         logger.info(f"[并行预取] {_aname} 原始响应: {str(_raw)[:200]}")
                         return _aname, _raw
                     except asyncio.TimeoutError:
@@ -699,7 +699,7 @@ def chat_stream():
                     task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
                     try:
                         # 子Agent调用带15s超时，防止挂起无限阻塞
-                        raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=15))
+                        raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=30))
                         logger.info(f"{agent_name} 原始响应: {raw_response}")
                         agent_result = extract_agent_result(raw_response)
                     except asyncio.TimeoutError:
