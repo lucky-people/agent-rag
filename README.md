@@ -24,13 +24,37 @@
 
 ## 📸 功能演示
 
-**① 系统主界面**：左侧智能对话（快捷提问 / 合同审查），右侧能力中心实时显示 4 个智能体在线状态与"双引擎在线"标识
+**① 系统主界面**：左侧智能对话，右侧能力中心实时显示 4 个智能体在线状态与"双引擎在线"标识
 
-<img src="docs/screenshots/01-home.png" width="820"/>
+<img src="docs/screenshots/01-main-ui.png" width="820"/>
 
-**② 房源智能推荐**：自然语言查询自动生成 SQL，返回带朝向 / 楼层 / 地铁距离的结构化房源卡片，支持一键收藏
+**② 房源智能查询**：自然语言自动生成 SQL，返回结构化房源卡片（租金/面积/户型/朝向/地铁距离），支持一键收藏；下方实时展示智能体协作链路（意图识别 → 房源查询 → 总耗时）
 
-<img src="docs/screenshots/02-house-recommend.png" width="820"/>
+<img src="docs/screenshots/02-house-query.png" width="680"/>
+
+**③ 真实房源详情**：点击卡片"查看详情"跳转房天下真实房源页，数据完整可溯源
+
+<img src="docs/screenshots/03-house-detail.png" width="820"/>
+
+**④ 交叉查询 · 多智能体编排**："金水区2000元以内的房子，离最近的地铁站有多远" → RecommendAgent 拆解子任务 → 并行调度房源/地铁子 Agent → 前端链路面板展开 4 个节点
+
+<img src="docs/screenshots/04-cross-query.png" width="640"/>
+
+**⑤ 组合查询 · 多意图并行**："找两套金水区房源 + 二七广场美食" → House + Poi 两个子 Agent 并行预取、保序输出
+
+<img src="docs/screenshots/05-combo-query.png" width="640"/>
+
+**⑥ RAG 法律问答**：租房法律问题给出结论 + 法律依据 + 引用条文，全程可溯源
+
+<img src="docs/screenshots/06-rag-answer.png" width="640"/>
+
+**⑦ Redis 缓存加速**：高频租房常识命中缓存直接返回（**1.1s**），对比完整 RAG 链路（**23.3s**），快约 5 倍
+
+<img src="docs/screenshots/07-redis-cache.png" width="640"/>
+
+**⑧ Milvus 向量知识库**：法律条文经 BGE-M3 编码为稠密向量 + 稀疏向量双路存储，支持语义检索
+
+<img src="docs/screenshots/08-milvus-store.png" width="820"/>
 
 ---
 
