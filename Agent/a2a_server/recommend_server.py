@@ -93,6 +93,7 @@ sql_prompt = ChatPromptTemplate.from_template(
   * house_listing: district(区域，**取值没有"区"字**，如'金水'/'中原'/'二七'/'管城'，查询用 district LIKE '%金水%')；rent(月租金)；layout(户型)；metro_line(地铁线路含站点，用 LIKE '%1号线%')；walk_minutes(**距地铁距离，单位米**，范围约150~1200，"离地铁近"用 <= 800)；area(面积)；status(**只有'整租'/'合租'，用户提合租→status='合租'，其余默认 status='整租'**)；detail_url(详情页链接，SELECT时必须带上)
   * poi_data: type(旅游景点/公园广场/餐饮服务/住宿服务/医疗保健), adname(区县，**带区/市/县后缀**，如'金水区'/'管城回族区'/'新郑市'，查询用 adname LIKE '%金水%')，nearest_metro(最近地铁站), nearest_metro_line(最近地铁线路), distance_to_metro(距地铁米)
   * metro_station: name(地铁站名，**实际带'(地铁站)'后缀**，查询用 name LIKE '%郑州东站%')，line_name(线路)，address(换乘线路信息)
+- **数量约束**：如果用户明确要求数量（如“推荐两套/3个/几间”），LIMIT 必须等于该数字；未明确提及时默认 LIMIT 5。
 - 如果信息不齐，输出json追问；无关问题则模仿最后1个示例。
 
 示例：

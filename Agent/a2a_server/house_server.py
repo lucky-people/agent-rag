@@ -77,6 +77,7 @@ sql_prompt = ChatPromptTemplate.from_template(
   * walk_minutes：**距最近地铁站的步行距离（单位：米），范围约150~1200米**。"离地铁站近"用 walk_minutes IS NOT NULL AND walk_minutes <= 800。
   * orientation：朝向，floor：楼层
   * detail_url：详情页链接，SELECT 时**必须带上**，推荐给用户时用于点击查看详情
+- **数量约束**：如果用户明确要求数量（如“推荐两套/3个/几间”），LIMIT 必须等于该数字；未明确提及时默认 LIMIT 5。
 - 查询结果请按 rent 升序或 walk_minutes 升序等合理排序。
 
 示例：
