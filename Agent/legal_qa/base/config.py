@@ -21,7 +21,7 @@ project_root = os.path.dirname(current_dir_path)
 
 # 4. 拼接配置文件(config.ini)的完整路径.
 # 优先读取项目根目录下 config_local/config.ini（集中密钥目录，已被 .gitignore 排除）
-whole_project_root = os.path.dirname(project_root)      # 整个项目根目录
+whole_project_root = os.path.dirname(os.path.dirname(project_root))  # 整个项目根目录
 config_file_path = os.path.join(whole_project_root, 'config_local', 'config.ini')
 if not os.path.exists(config_file_path):
     # 兼容旧路径：Agent/legal_qa/config.ini
@@ -67,7 +67,7 @@ class Config:
 
         if config_file is None:
             # 优先读取项目根目录下 config_local/config.ini（集中密钥目录）
-            _whole_root = os.path.dirname(self.PROJECT_ROOT)
+            _whole_root = os.path.dirname(os.path.dirname(self.PROJECT_ROOT))
             _local_cfg = os.path.join(_whole_root, 'config_local', 'config.ini')
             if os.path.exists(_local_cfg):
                 config_file = _local_cfg

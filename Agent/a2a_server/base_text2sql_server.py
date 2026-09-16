@@ -15,6 +15,7 @@
 
 import asyncio
 import json
+import re
 import time
 from datetime import datetime
 import pytz
@@ -23,6 +24,48 @@ from python_a2a import A2AServer, TaskStatus, TaskState
 
 from Agent.create_logger import logger
 from Agent.utils.format import robust_json_loads, extract_sql
+
+
+# 中文数量词映射
+_CN_NUM = {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5,
+            "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def extract_requested_limit(conversation: str):
+    """从用户问题提取明确要求的数量（如“两套/3间/几个”），没有则返回 None。"""
+    m = re.search(r"([一二两三四五六七八九十\d]+)\s*(?:套|间|个|所)", conversation)
+    if not m:
+        return None
+    num = m.group(1)
+    if num.isdigit():
+        n = int(num)
+    elif num in _CN_NUM:
+        n = _CN_NUM[num]
+    else:
+        return None
+    return n if 1 <= n <= 20 else None
+
+
+def enforce_limit(sql: str, conversation: str) -> str:
+    """数量强制兜底：用户明确要求数量时，确保 SQL 的 LIMIT 与之一致。
+
+    LLM 生成 SQL 偶发不遵守数量约束，这里在代码层强制修正：
+    - 已有限 LIMIT 且与要求不符 → 替换为要求值
+    - 无 LIMIT 且用户要求数量 → 追加 LIMIT
+    - 用户未明确数量 → 原样返回（默认由 LLM 定，通常 LIMIT 5）
+    """
+    n = extract_requested_limit(conversation)
+    if not n:
+        return sql
+    m = re.search(r"LIMIT\s+(\d+)", sql, re.IGNORECASE)
+    if m:
+        if int(m.group(1)) != n:
+            sql = sql[:m.start()] + f"LIMIT {n}" + sql[m.end():]
+            logger.info(f"[数量强制] LIMIT 修正为 {n}（用户要求）")
+    else:
+        sql = sql.rstrip().rstrip(";") + f" LIMIT {n}"
+        logger.info(f"[数量强制] 追加 LIMIT {n}（用户要求）")
+    return sql
 
 
 class Text2SqlAgentServer(A2AServer):
@@ -109,6 +152,8 @@ class Text2SqlAgentServer(A2AServer):
 
             # 否则则提取SQL查询，并进行MCP调用
             sql_query = gen_result["sql"]  #
+            # 数量强制兜底：用户明确要求数量时（如“推荐两套”），强制 LIMIT 一致
+            sql_query = enforce_limit(sql_query, conversation)
             logger.info(f"生成的SQL查询: {sql_query}")
 
             # 3 带重试的查询循环（P1-3 执行报错自动纠错 / P1-4 空结果自动放宽条件）

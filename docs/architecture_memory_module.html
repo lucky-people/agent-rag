@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>记忆模块 · 会话记忆与用户画像</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f7f7f8; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #222; padding: 26px 30px; }
+  .wrap { width: 1380px; margin: 0 auto; }
+  .title { font-size: 32px; font-weight: 800; color: #0d1b2a; text-align: center; letter-spacing: 1px; }
+  .subtitle { font-size: 16px; color: #5b5a55; text-align: center; margin: 8px 0 22px; }
+  .arrow-down { text-align: center; font-size: 19px; color: #0d1b2a; line-height: 1.5; }
+  .arrow-tiny { text-align: center; font-size: 13px; color: #0d1b2a; line-height: 1.4; }
+  .row { display: flex; gap: 14px; margin: 10px 0; }
+  .box { background: #fff; border-radius: 10px; padding: 15px 18px; }
+  .box-title { font-size: 19px; font-weight: 700; margin-bottom: 5px; }
+  .box-sub { font-size: 13px; color: #5b5a55; line-height: 1.65; }
+  .tag { display: inline-block; background: #eef1f5; border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #3a506b; margin: 1px 2px; }
+  .navy { border: 2px solid #0d1b2a; }
+  .navy .box-title { color: #0d1b2a; }
+  .blue { border: 2px solid #3a506b; }
+  .blue .box-title { color: #3a506b; }
+  .gold { border: 2px solid #c9a961; }
+  .gold .box-title { color: #8a6d1f; }
+  .inner { background: #eef1f5; border-radius: 6px; padding: 9px 13px; margin-top: 7px; font-size: 14px; line-height: 1.55; }
+  .inner.gold-bg { background: #f7f0e0; }
+  .inner small { display: block; font-size: 12px; color: #5b5a55; }
+  .hl { color: #0d1b2a; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title">记忆模块 · 会话记忆与用户画像</div>
+  <div class="subtitle">短期记忆（会话窗口）× 长期记忆（用户画像 / 持久化历史），支撑多轮追问与个性化推荐</div>
+
+  <!-- 入口 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box navy" style="width:560px;text-align:center;">
+      <div class="box-title">用户多次提问（同一会话）</div>
+      <div class="box-sub">"金水区2000以下的房子" → "离地铁近的还有吗" → "有没有两室的"</div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- 短期记忆 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box blue" style="width:1100px;">
+      <div class="box-title">短期记忆 · 会话状态（sessions dict）</div>
+      <div class="box-sub">
+        <span class="tag">sessions_lock 锁内写</span>
+        <span class="tag">SESSION_TTL = 3600s 空闲自动清理</span>
+        <span class="tag">多用户 session 隔离</span>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>历史拼接</b><small>history 最近 6-7 轮 → 意图识别上下文（conversation_history）</small>
+        </div>
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>Agent 查询上下文</b><small>最近 7 轮 User/Assistant → 拼入子 Agent 消息</small>
+        </div>
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>并发安全</b><small>加锁读写 history · 避免同一会话并发丢消息</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ 意图识别 / 查询时注入记忆</div>
+
+  <!-- 中间：记忆消费 -->
+  <div class="row">
+    <div class="box gold" style="flex:1;">
+      <div class="box-title" style="text-align:center;">记忆消费</div>
+      <div class="inner gold-bg" style="text-align:center;">
+        多轮追问理解
+        <small>"离地铁近的还有吗" → 结合上轮区域 / 预算重写查询</small>
+      </div>
+      <div class="inner gold-bg" style="text-align:center;margin-top:7px;">
+        数量词兜底
+        <small>从原始问题提取"两套 / 3个" → 强制 SQL LIMIT</small>
+      </div>
+      <div class="inner gold-bg" style="text-align:center;margin-top:7px;">
+        个性化推荐
+        <small>注入用户画像 → "金水区 + 预算1000-2000 + 合租"优先推荐</small>
+      </div>
+    </div>
+
+    <div class="box navy" style="flex:1;">
+      <div class="box-title" style="text-align:center;">长期记忆 · 用户画像（MySQL）</div>
+      <div class="inner" style="text-align:center;">
+        user_preferences 表
+        <small>budget_min / budget_max / preferred_district / layout_pref</small>
+      </div>
+      <div class="inner" style="text-align:center;margin-top:7px;">
+        对话历史持久化
+        <small>save_chat_message → chat_history 表（uid / sid / role / content / route）</small>
+      </div>
+      <div class="inner" style="text-align:center;margin-top:7px;">
+        收藏数据
+        <small>favorites 表 → 收藏对比 / AI 多维度分析</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 -->
+  <div class="arrow-down">▼ 效果</div>
+  <div class="row" style="justify-content:center;">
+    <div class="box gray" style="width:1100px;text-align:center;padding:11px 18px;background:#e8e4dc;border:1px solid #b5b1a8;">
+      <div class="box-sub">
+        <b>设计优点：</b>
+        ① 进程内会话 + TTL 清理，轻量且无外部依赖，适合单机演示；② 锁内写保证并发安全；③ 用户画像存 MySQL 可跨会话复用；
+        ④ 历史窗口裁剪（最近 N 轮）控制 LLM 上下文成本；⑤ 短 / 长记忆分离，短期管上下文、长期管个性化。
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

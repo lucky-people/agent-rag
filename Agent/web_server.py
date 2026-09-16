@@ -31,6 +31,7 @@ from Agent.config import Config
 from Agent.create_logger import logger
 from Agent.main_prompts import RentalAdvisorPrompts
 from Agent.utils.format import robust_json_loads, extract_agent_result
+from Agent.a2a_server.base_text2sql_server import extract_requested_limit
 from Agent import user_system
 
 conf = Config()
@@ -179,13 +180,34 @@ def query_legal(question, session_id):
         os.chdir(legal_qa_path)
         try:
             collected = ""
-            for token, is_complete in qa.query(question, session_id=session_id):
+            refs = []
+            for item in qa.query(question, session_id=session_id):
+                token = item[0]
+                if token == "__REFERENCES__":
+                    if len(item) > 1:
+                        refs = item[1]
+                    continue
                 if token:
                     collected += token
-                if is_complete:
+                if len(item) > 1 and item[1]:
                     break
         finally:
             os.chdir(old_cwd)
+        # 同步接口无 references 事件，把引用条文附加到答案末尾
+        if refs:
+            ref_lines = []
+            for r in refs:
+                if isinstance(r, dict):
+                    law = r.get('law', '')
+                    art = r.get('article', '')
+                    snip = (r.get('snippet') or '')[:120]
+                    head = f"《{law}》" if law else ""
+                    if art:
+                        head += f"第{art}条"
+                    ref_lines.append(f"- {head}：{snip}" if head else f"- {snip}")
+                else:
+                    ref_lines.append(f"- {r}")
+            collected += "\n\n**引用条文**：\n" + "\n".join(ref_lines)
         return collected if collected else "未找到相关法律答案。"
     except Exception as e:
         logger.error(f"法律问答查询失败: {e}")
@@ -539,6 +561,13 @@ def chat_stream():
                 _aname = conf.intent.get(_intent)
                 if _aname in _AGENT_ROUTE_NAMES:
                     _q = user_queries.get(_intent, {})
+                    # 数量词兜底：意图识别重写可能丢失数量词（如"推荐两套"→"管城区1000元...")，
+                    # 从原始问题提取数量词补回，保证 SQL 层能强制 LIMIT
+                    if _q and extract_requested_limit(_q) is None:
+                        _n = extract_requested_limit(message)
+                        if _n is not None:
+                            _q = f"推荐{_n}套{_q}"
+                            logger.info(f"[数量兜底] 补回数量词: {_q}")
                     _prefetch_tasks.append((_aname, _q))
 
             prefetched = {}
@@ -761,8 +790,15 @@ def chat_stream():
                         _raw_arts = getattr(raw_response, 'artifacts', None) or []
                         for _art in _raw_arts:
                             for _part in (_art.get('parts', []) if isinstance(_art, dict) else []):
-                                if isinstance(_part, dict) and _part.get('type') == 'json':
+                                if isinstance(_part, dict) and _part.get('type') in ('json', 'data'):
                                     _odata = _part.get('data') or {}
+                                    # python_a2a 可能把 data 序列化成字符串（dict repr），兼容解析
+                                    if isinstance(_odata, str):
+                                        try:
+                                            import ast as _ast
+                                            _odata = _ast.literal_eval(_odata)
+                                        except Exception:
+                                            _odata = {}
                                     if isinstance(_odata, dict) and _odata.get('type') == 'orchestration_trace':
                                         for _sub in _odata.get('sub_agents', []):
                                             add_trace_step(
@@ -1462,4 +1498,12 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.error(f"会话清理异常: {e}")
     threading.Thread(target=_cleanup_loop, daemon=True).start()
+    # 后台预热 RAG 法律问答系统，避免用户首次法律提问等待约80秒的初始化
+    def _warmup_legal():
+        time.sleep(3)   # 等待 web 服务就绪后再预热
+        try:
+            _init_legal_qa()
+        except Exception as e:
+            logger.error(f"法律问答系统预热失败: {e}")
+    threading.Thread(target=_warmup_legal, daemon=True).start()
     app.run(host="127.0.0.1", port=8501, debug=False, threaded=True)

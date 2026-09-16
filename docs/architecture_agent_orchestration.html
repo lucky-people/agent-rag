@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>智能体编排 · RecommendAgent 协作链路</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f7f7f8; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #222; padding: 26px 30px; }
+  .wrap { width: 1500px; margin: 0 auto; }
+  .title { font-size: 32px; font-weight: 800; color: #0d1b2a; text-align: center; letter-spacing: 1px; }
+  .subtitle { font-size: 16px; color: #5b5a55; text-align: center; margin: 8px 0 22px; }
+  .arrow-down { text-align: center; font-size: 19px; color: #0d1b2a; line-height: 1.5; }
+  .arrow-tiny { text-align: center; font-size: 13px; color: #0d1b2a; line-height: 1.4; }
+  .row { display: flex; gap: 14px; margin: 10px 0; }
+  .box { background: #fff; border-radius: 10px; padding: 15px 18px; }
+  .box-title { font-size: 19px; font-weight: 700; margin-bottom: 5px; }
+  .box-sub { font-size: 13px; color: #5b5a55; line-height: 1.65; }
+  .tag { display: inline-block; background: #eef1f5; border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #3a506b; margin: 1px 2px; }
+  .navy { border: 2px solid #0d1b2a; }
+  .navy .box-title { color: #0d1b2a; }
+  .blue { border: 2px solid #3a506b; }
+  .blue .box-title { color: #3a506b; }
+  .gold { border: 2px solid #c9a961; }
+  .gold .box-title { color: #8a6d1f; }
+  .wine { border: 2px solid #6b2c3e; }
+  .wine .box-title { color: #6b2c3e; }
+  .inner { background: #eef1f5; border-radius: 6px; padding: 9px 13px; margin-top: 7px; font-size: 14px; line-height: 1.55; }
+  .inner.gold-bg { background: #f7f0e0; }
+  .inner small { display: block; font-size: 12px; color: #5b5a55; }
+  .ok { color: #2e7d32; font-weight: 700; }
+  .fail { color: #b71c1c; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title">智能体编排 · RecommendAgent 协作链路</div>
+  <div class="subtitle">跨域复杂问题（"1号线附近2000以下房源 + 周边景点"）：LLM 拆解 → 并行调度子 Agent → 汇总 → 可观测 trace</div>
+
+  <!-- 入口 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box navy" style="width:600px;text-align:center;">
+      <div class="box-title">用户提问（跨域复杂问题）</div>
+      <div class="box-sub">"1号线附近 2000 以下、离地铁近的房源 + 周边景点"</div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ BERT 意图路由 → 命中 {recommend}</div>
+
+  <!-- 编排器 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box gold" style="width:1000px;">
+      <div class="box-title">RecommendAgent 编排器（recommend_server.py · :5009）</div>
+      <div class="box-sub">
+        <span class="tag">split_prompt：LLM 拆解为 N 个可独立执行的子任务</span>
+        <span class="tag">asyncio 并行调度 · 每子调用 20s 超时</span>
+        <span class="tag">单域 / 子Agent 故障自动降级回退</span>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>子任务 1 · 房源</b><small>金水区 2000 以下整租房源</small>
+        </div>
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>子任务 2 · 地铁</b><small>1 号线沿线站点 / 最近地铁站</small>
+        </div>
+        <div class="inner" style="flex:1;text-align:center;">
+          <b>子任务 3 · 周边</b><small>房源 / 站点附近景点与美食</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼ 并行调用 3 个子 Agent（A2A 协议）</div>
+
+  <!-- 三个子Agent -->
+  <div class="row">
+    <div class="box navy" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">HouseQueryAssistant</div>
+      <div class="box-sub">A2A :5006</div>
+      <div class="inner">▼ MCP :8004</div>
+      <div class="inner">MySQL house_listing<small>SQL 只读白名单 · 数量强制 LIMIT</small></div>
+    </div>
+    <div class="box navy" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">MetroQueryAssistant</div>
+      <div class="box-sub">A2A :5007</div>
+      <div class="inner">▼ MCP :8005</div>
+      <div class="inner">MySQL metro_station<small>地铁站点 / 线路 / 步行距离</small></div>
+    </div>
+    <div class="box navy" style="flex:1;text-align:center;">
+      <div class="box-title" style="font-size:17px;">PoiQueryAssistant</div>
+      <div class="box-sub">A2A :5008</div>
+      <div class="inner">▼ MCP :8006</div>
+      <div class="inner">MySQL poi_data<small>景点 / 餐饮 / 周边设施</small></div>
+    </div>
+  </div>
+
+  <!-- 汇总 + trace -->
+  <div class="arrow-down">▼ 汇总三路结果（extract_agent_result 提取真实结果）</div>
+  <div class="row" style="justify-content:center;">
+    <div class="box gold" style="width:760px;">
+      <div class="box-title">编排汇总与可观测性</div>
+      <div class="box-sub">
+        汇总各子结果 → 组织综合推荐回复（房源卡片 + 地铁距离 + 周边推荐）
+      </div>
+      <div class="inner gold-bg" style="margin-top:8px;">
+        orchestration_trace
+        <small>每个子调用：Agent 名 / 状态（success · no_data · error）/ 耗时 → 前端链路追踪面板展开 SubAgent 节点</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- 可靠性 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box blue" style="width:1000px;text-align:center;padding:11px 18px;">
+      <div class="box-sub">
+        <b>可靠性设计：</b>
+        <span class="ok">✓ MCP 调用超时（15s / 20s）</span>
+        <span class="ok">✓ SQL 级重试（3 次 · 修正提示词）</span>
+        <span class="ok">✓ 连接错误与 SQL 错误分离归因</span>
+        <span class="ok">✓ 子 Agent 故障降级 → 回退 text2sql 直查</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:center;margin-top:12px;">
+    <div class="box gray" style="width:1000px;text-align:center;padding:10px 18px;background:#e8e4dc;border:1px solid #b5b1a8;">
+      <div class="box-sub" style="font-size:13px;">
+        <b>注：</b>单意图直查（"金水区 2000 元以下的整租房"）不经过编排器，由 web_server 直接并行预取 House / Metro / Poi 子 Agent，15s 超时、保序输出。
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

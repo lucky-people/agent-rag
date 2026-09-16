@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>数据链路 · Redis 缓存 × MySQL 结构化 × RAG 知识</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f7f7f8; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; color: #222; padding: 26px 30px; }
+  .wrap { width: 1500px; margin: 0 auto; }
+  .title { font-size: 32px; font-weight: 800; color: #0d1b2a; text-align: center; letter-spacing: 1px; }
+  .subtitle { font-size: 16px; color: #5b5a55; text-align: center; margin: 8px 0 22px; }
+  .arrow-down { text-align: center; font-size: 19px; color: #0d1b2a; line-height: 1.5; }
+  .arrow-tiny { text-align: center; font-size: 13px; color: #0d1b2a; line-height: 1.4; }
+  .row { display: flex; gap: 14px; margin: 10px 0; }
+  .box { background: #fff; border-radius: 10px; padding: 15px 18px; }
+  .box-title { font-size: 19px; font-weight: 700; margin-bottom: 5px; }
+  .box-sub { font-size: 13px; color: #5b5a55; line-height: 1.65; }
+  .tag { display: inline-block; background: #eef1f5; border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #3a506b; margin: 1px 2px; }
+  .navy { border: 2px solid #0d1b2a; }
+  .navy .box-title { color: #0d1b2a; }
+  .blue { border: 2px solid #3a506b; }
+  .blue .box-title { color: #3a506b; }
+  .wine { border: 2px solid #6b2c3e; }
+  .wine .box-title { color: #6b2c3e; }
+  .inner { background: #eef1f5; border-radius: 6px; padding: 9px 13px; margin-top: 7px; font-size: 14px; line-height: 1.55; }
+  .inner.wine-bg { background: #f6ecee; }
+  .ok { color: #2e7d32; font-weight: 700; }
+  .hit { background: #e8f5e9; border: 1.5px solid #2e7d32; border-radius: 6px; padding: 9px 13px; margin-top: 7px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="title">数据链路 · Redis 缓存 × MySQL 结构化 × RAG 知识</div>
+  <div class="subtitle">同一 LLM 调度下双数据链路：结构化数据（多智能体 + MCP + MySQL）与 非结构化知识（RAG + Milvus + Redis 缓存）</div>
+
+  <!-- 入口 -->
+  <div class="row" style="justify-content:center;">
+    <div class="box blue" style="width:620px;text-align:center;">
+      <div class="box-title">主服务 web_server.py · Flask :8501</div>
+      <div class="box-sub">
+        <span class="tag">BERT 两级路由</span>
+        <span class="tag">法律 / 常识 → RAG 链路</span>
+        <span class="tag">房源 / 地铁 / POI → 多智能体链路</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:14px;">
+    <!-- 左：结构化链路 -->
+    <div class="box navy" style="flex:1;">
+      <div class="box-title" style="text-align:center;">① 结构化数据链路 · MySQL</div>
+      <div class="inner" style="text-align:center;">
+        House / Metro / Poi Agent → MCP 工具层 :8004-8006
+        <small>SQL 只读白名单（仅 SELECT/WITH）· 超时 + 重试</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner" style="text-align:center;">
+        MySQL 8.0 :3306（rental 库）
+        <small>house_listing（729 条）· metro_station · poi_data · user 体系</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner" style="text-align:center;">
+        结构化 JSON → 房源卡片
+        <small>租金 / 面积 / 户型 / 朝向 / 地铁距离 · 支持收藏对比</small>
+      </div>
+    </div>
+
+    <!-- 中：缓存判断 -->
+    <div class="box wine" style="flex:1;">
+      <div class="box-title" style="text-align:center;">② 知识链路 · Redis 缓存拦截</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        法律问题 / 租房常识（BERT 分类 legal）
+        <small>"房东不退押金怎么办" · "物业费谁交"</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner" style="text-align:center;">
+        Redis 7 :6379 · 查缓存键 rag_answer:*
+        <small>高频 FAQ 缓存 · 语义归一化（同义改写后查缓存）</small>
+      </div>
+      <div class="hit" style="text-align:center;">
+        ✅ 缓存命中 → 直接流式返回 <b>（快约 5 倍，跳过完整 RAG）</b>
+      </div>
+      <div class="arrow-tiny">▼ 未命中 → 走完整 RAG</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        混合检索 + 重排 + 生成
+        <small>BM25 + BGE-M3 稠密 / 稀疏双向量 → Milvus → BGE Reranker → LLM 生成</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner" style="text-align:center;">
+        答案写回 Redis 缓存
+        <small>下次同类问题直接命中</small>
+      </div>
+    </div>
+
+    <!-- 右：向量库 -->
+    <div class="box wine" style="flex:1;">
+      <div class="box-title" style="text-align:center;">③ 向量知识库 · Milvus</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        文档解析入库（离线）
+        <small>PDF / Word / OCR → 分块 → 法律条文文本</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        BGE-M3 编码
+        <small>稠密向量（语义）+ 稀疏向量（关键词）双路编码</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        Milvus 2.4 :19530 · 集合 edurag_final
+        <small>法律知识向量库 · 语义检索 Top-K</small>
+      </div>
+      <div class="arrow-tiny">▼</div>
+      <div class="inner wine-bg" style="text-align:center;">
+        BM25 + 向量 加权融合 → BGE Reranker 精排
+        <small>兼顾关键词命中与语义相似度</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 -->
+  <div class="arrow-down" style="margin-top:6px;">▼ 统一出口</div>
+  <div class="row" style="justify-content:center;">
+    <div class="box gray" style="width:900px;text-align:center;padding:11px 18px;background:#e8e4dc;border:1px solid #b5b1a8;">
+      <div class="box-sub">
+        <b>LLM（DashScope 通义千问）统一生成 → SSE 流式返回前端</b><br>
+        引用条文经 __REFERENCES__ 结构化标记附加 · 消融实验证明：混合 + Rerank 优于纯 BM25 / 纯向量
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

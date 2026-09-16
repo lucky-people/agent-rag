@@ -27,7 +27,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from Agent.config import Config
 from Agent.create_logger import logger
-from Agent.utils.format import format_exception, robust_json_loads
+from Agent.utils.format import format_exception, robust_json_loads, extract_agent_result
 
 conf = Config()
 
@@ -253,7 +253,11 @@ split_prompt = ChatPromptTemplate.from_template(
 输出要求：只输出 JSON，格式为：
 {{"domains": ["house"], "sub_queries": {{"house": "金水区2000元以下的整租房源"}}}}
 - domains 列出所有涉及的域（1-3个）
-- sub_queries 为每个域生成一个独立、自包含的子查询问题（不要引用其他域的结果）
+- sub_queries 为每个域生成一个独立、自包含、可直接执行的子查询问题
+- 每个子查询只能依赖该域自身的数据，禁止引用其他域的结果。例如：metro 子查询不能写"这些房子离地铁站多远"（房子是house域的结果），应改为"金水区有哪些地铁站"
+- metro 域子查询建议格式："XX区域有哪些地铁站/地铁线路" 或 "XX地标附近的地铁站"
+- poi 域子查询建议格式："XX区域有哪些景点/公园/美食"
+- house 域子查询保留用户原始条件，不要擅自添加用户未提到的条件（如整租/合租/面积/朝向）
 - 如果问题只涉及单一域，domains 只有一个元素
 - 若用户问题同时涉及多个方面（如"房子离地铁站多远"同时涉及房源与地铁距离），必须拆分为多个域（如 house + metro）
 - 如果问题与租房无关（问候、闲聊、法律），domains 为空数组
@@ -275,7 +279,7 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
     def _split_domains(self, conversation: str) -> dict:
         """用LLM拆解用户问题为多域子查询；失败时保守回退（视为单域house）"""
         try:
-            chain = self.split_prompt | self.llm
+            chain = split_prompt | self.llm
             out = chain.invoke({"question": conversation}).content.strip()
             parsed = robust_json_loads(out)
             if isinstance(parsed, dict) and isinstance(parsed.get("domains"), list):
@@ -287,28 +291,20 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
             logger.error(f"编排拆解失败，回退单域: {str(e)}")
         return {"domains": ["house"], "sub_queries": {"house": conversation}}
 
-    async def _call_sub_agent(self, intent_name: str, url: str, sub_query: str, timeout: float = 30.0):
+    async def _call_sub_agent(self, domain_key: str, url: str, sub_query: str, timeout: float = 30.0):
         """调用单个子Agent，返回 (域, 文本结果, 状态, 耗时ms)；失败返回 None"""
         import time as _t
         _start = _t.time()
         try:
+            intent_name = SUB_AGENTS[domain_key][0]
             agent = self.network.get_agent(intent_name)
             msg = Message(content=TextContent(text=sub_query), role=MessageRole.USER)
             task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
             raw = await asyncio.wait_for(agent.send_task_async(task), timeout=timeout)
-            # 提取文本结果
-            text_result = raw if isinstance(raw, str) else str(raw)
-            # A2A 返回可能是 dict/object，尝试取 artifacts 文本
-            if isinstance(raw, dict):
-                artifacts = raw.get("artifacts") or []
-                parts = []
-                for art in artifacts:
-                    for part in art.get("parts", []) if isinstance(art, dict) else []:
-                        if part.get("type") == "text":
-                            parts.append(part.get("text", ""))
-                text_result = "\n".join(parts) if parts else text_result
+            # 提取文本结果：复用 extract_agent_result，兼容 Task 对象/异常状态
+            text_result = extract_agent_result(raw)
             _elapsed = round((_t.time() - _start) * 1000, 1)
-            return {"domain": intent_name, "text": text_result.strip(), "status": "success", "elapsed_ms": _elapsed}
+            return {"domain": domain_key, "text": text_result.strip(), "status": "success", "elapsed_ms": _elapsed}
         except asyncio.TimeoutError:
             logger.warning(f"子Agent {intent_name} 调用超时")
             return {"domain": intent_name, "text": "", "status": "timeout", "elapsed_ms": round((_t.time() - _start) * 1000, 1)}
@@ -338,7 +334,7 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
                 for d in domains:
                     intent_name, url, _ = SUB_AGENTS[d]
                     q = sub_queries.get(d, conversation)
-                    coros.append(self._call_sub_agent(intent_name, url, q))
+                    coros.append(self._call_sub_agent(d, url, q))
                 results = await asyncio.gather(*coros)
                 return results
 
@@ -371,7 +367,7 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
             combined = "\n\n".join(sections)
             task.artifacts = [{"parts": [{"type": "text", "text": combined}]}]
             # 编排明细随 artifacts 返回，web_server 可解析为子节点展示
-            task.artifacts.append({"parts": [{"type": "json", "data": orchestration_trace}]})
+            task.artifacts.append({"parts": [{"type": "data", "data": orchestration_trace}]})
             task.status = TaskStatus(state=TaskState.COMPLETED)
             return task
         except Exception as e:

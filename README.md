@@ -67,6 +67,20 @@
 
 ![全项目架构：多智能体 × RAG 双引擎完整链路](docs/images/双引擎架构v3.png)
 
+### 核心机制详解
+
+**① 多智能体编排**：跨域复杂问题（"1号线附近2000以下房源 + 周边景点"）由 RecommendAgent 编排器拆解为 N 个可独立执行的子任务，并行调度 House / Metro / Poi 三个子智能体，汇总结果并输出可观测 trace：
+
+<img src="docs/images/agent-orchestration.png" width="900"/>
+
+**② Redis × MySQL × RAG 数据链路**：结构化数据（房源 / 地铁 / POI）走多智能体 + MCP + MySQL；非结构化法律知识走 RAG（Redis 缓存拦截 → BM25 + 向量混合检索 → Reranker → LLM）：
+
+<img src="docs/images/data-pipeline.png" width="900"/>
+
+**③ 记忆模块**：短期记忆（会话窗口 + TTL + 锁内写）支撑多轮追问，长期记忆（MySQL 用户画像 + 历史持久化）支撑个性化推荐：
+
+<img src="docs/images/memory-module.png" width="860"/>
+
 ### 一次提问的完整处理链路
 
 ```
@@ -121,8 +135,11 @@
 │   ├── sql/rental_schema.sql       # 数据库表结构
 │   └── 启动系统.bat / start.sh     # 一键启动脚本
 ├── docs/                           # 文档与图件
-│   ├── architecture_v3.html        # 架构图源文件
-│   ├── images/                     # 架构图
+│   ├── architecture_v3.html          # 架构图源文件
+│   ├── architecture_agent_orchestration.html  # 智能体编排图源文件
+│   ├── architecture_data_pipeline.html        # 数据链路图源文件
+│   ├── architecture_memory_module.html        # 记忆模块图源文件
+│   ├── images/                     # 架构图（PNG）
 │   └── screenshots/                # 功能演示截图
 ├── 实验脚本/                        # 实验评估（RAG 消融 + 意图分类）
 ├── tests/                          # 单元测试（41 个用例）
