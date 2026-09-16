@@ -248,13 +248,14 @@ split_prompt = ChatPromptTemplate.from_template(
 可用的数据域：
 - house：房源（租金/区域/户型/面积/朝向/楼层/地铁线路）
 - poi：周边景点/公园/餐饮/医疗/住宿等POI
-- metro：地铁线路/站点/换乘
+- metro：地铁线路/站点/换乘/距地铁站的距离
 
 输出要求：只输出 JSON，格式为：
 {{"domains": ["house"], "sub_queries": {{"house": "金水区2000元以下的整租房源"}}}}
 - domains 列出所有涉及的域（1-3个）
 - sub_queries 为每个域生成一个独立、自包含的子查询问题（不要引用其他域的结果）
 - 如果问题只涉及单一域，domains 只有一个元素
+- 若用户问题同时涉及多个方面（如"房子离地铁站多远"同时涉及房源与地铁距离），必须拆分为多个域（如 house + metro）
 - 如果问题与租房无关（问候、闲聊、法律），domains 为空数组
 
 用户问题: {question}

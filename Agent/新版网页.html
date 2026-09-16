@@ -2104,6 +2104,11 @@
                                         bubble.innerHTML = '';
                                     }
                                     renderHouseCards(bubble, fullText);
+                                    // 组合查询（房源+POI/地铁等）：保留非房源文本，避免被卡片吞掉
+                                    const _otherText = extractOtherText(fullText);
+                                    if (_otherText) {
+                                        bubble.insertAdjacentHTML('beforeend', renderMarkdown(_otherText));
+                                    }
                                     const _rawBox = document.createElement('details');
                                     _rawBox.className = 'house-raw-details';
                                     _rawBox.innerHTML = '<summary><i class="fas fa-align-left"></i> 查看原文</summary><div class="house-raw-text"></div>';
@@ -2768,23 +2773,24 @@
     });
 
     // 从回复文本中提取房源列表（仅识别真正的房源条目，避免把 POI/地铁/景点编号行误当房源）
+    // 房源强特征：必须带具体数据（数字+租金/面积/户型），避免把"请问租金范围""您想整租还是合租"等澄清/问句误判为房源。
+    // 纯 POI/地铁/景点输出（如"最近地铁：…"）不会命中；即使同一组合推荐里混排了 POI/地铁行，也只会识别真正的房源编号项。
+    function isHouseTxt(t) {
+        if (!t) return false;
+        // 强特征1：租金带数字（如 2000元/月、1500块/月、租金：2000、租金2000元）
+        if (/\d{3,6}\s*(?:元|块)\s*\/?\s*月/.test(t)) return true;
+        if (/租金\s*[:：]?\s*\d{3,6}/.test(t)) return true;
+        // 强特征2：面积带数字（如 89㎡、89.5平方米、89平米）
+        if (/\d+(?:\.\d+)?\s*(?:㎡|平方米|平米)/.test(t)) return true;
+        // 强特征3：户型格式（如 2室1厅、3室2卫、1室、3室1厅2卫）
+        if (/\d+\s*室(?:\s*\d+\s*厅)?(?:\s*\d+\s*卫)?/.test(t)) return true;
+        // 强特征4：整租/合租后跟具体房源标识（如 整租:主卧、合租·次卧）
+        if (/(?:整租|合租)\s*[:：·\.]\s*\S+/.test(t)) return true;
+        return false;
+    }
+
     function extractHouses(text) {
         if (!text) return [];
-        // 房源强特征：必须带具体数据（数字+租金/面积/户型），避免把"请问租金范围""您想整租还是合租"等澄清/问句误判为房源。
-        // 纯 POI/地铁/景点输出（如"最近地铁：…"）不会命中；即使同一组合推荐里混排了 POI/地铁行，也只会识别真正的房源编号项。
-        function isHouseTxt(t) {
-            if (!t) return false;
-            // 强特征1：租金带数字（如 2000元/月、1500块/月、租金：2000、租金2000元）
-            if (/\d{3,6}\s*(?:元|块)\s*\/?\s*月/.test(t)) return true;
-            if (/租金\s*[:：]?\s*\d{3,6}/.test(t)) return true;
-            // 强特征2：面积带数字（如 89㎡、89.5平方米、89平米）
-            if (/\d+(?:\.\d+)?\s*(?:㎡|平方米|平米)/.test(t)) return true;
-            // 强特征3：户型格式（如 2室1厅、3室2卫、1室、3室1厅2卫）
-            if (/\d+\s*室(?:\s*\d+\s*厅)?(?:\s*\d+\s*卫)?/.test(t)) return true;
-            // 强特征4：整租/合租后跟具体房源标识（如 整租:主卧、合租·次卧）
-            if (/(?:整租|合租)\s*[:：·\.]\s*\S+/.test(t)) return true;
-            return false;
-        }
         // 整段文本没有房源特征 → 不是房源列表，直接返回
         if (!isHouseTxt(text)) return [];
 
@@ -2823,6 +2829,26 @@
             }
         }
         return result;
+    }
+
+    // 提取回复中的非房源文本（组合查询：房源卡片之外保留POI/地铁/推荐理由等内容）
+    function extractOtherText(text) {
+        if (!text) return '';
+        const lines = text.split('\n');
+        const houseLines = new Set();
+        let inHouse = false;
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            const m = line.match(/^(\d+)[.、\)）]\s*(.+)/);
+            if (m) {
+                inHouse = isHouseTxt(line);
+                if (inHouse) houseLines.add(i);
+            } else if (inHouse && line) {
+                houseLines.add(i);
+            }
+        }
+        const other = lines.filter(function(_, i) { return !houseLines.has(i); }).join('\n').trim();
+        return other.replace(/\n{3,}/g, '\n\n');
     }
 
 

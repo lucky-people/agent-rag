@@ -43,11 +43,14 @@ class RentalAdvisorPrompts:
 {{"intents": ["poi"], "user_queries": {{"poi": "二七广场附近有什么好吃的"}}, "follow_up_message": ""}}
 {{"intents": ["metro"], "user_queries": {{"metro": "郑州东站坐几号线"}}, "follow_up_message": ""}}
 {{"intents": ["recommend"], "user_queries": {{"recommend": "1号线附近2000以下的房源有哪些"}}, "follow_up_message": ""}}
+{{"intents": ["recommend"], "user_queries": {{"recommend": "金水区2000元以内的房子，离最近的地铁站有多远"}}, "follow_up_message": ""}}
+{{"intents": ["recommend"], "user_queries": {{"recommend": "管城区1000元左右的房源，旁边有什么公园"}}, "follow_up_message": ""}}
 {{"intents": ["legal"], "user_queries": {{"legal": "房东在租赁期间将房屋出售，新房东要求我搬走，我能否拒绝？"}}, "follow_up_message": ""}}
 {{"intents": ["chat"], "user_queries": {{"chat": "你好，你是谁？"}}, "follow_up_message": ""}}
 {{"intents": ["chat"], "user_queries": {{"chat": "1+1等于几"}}, "follow_up_message": ""}}
 {{"intents": ["house"], "user_queries": {{}}, "follow_up_message": "请问您想查询哪个区域的房源？例如金水区、中原区。"}}
-{{"intents": ["poi", "house"], "user_queries": {{"poi": "1号线沿线有哪些景点", "house": "1号线附近2000以下的房源"}}, "follow_up_message": ""}}
+{{"intents": ["poi", "house"], "user_queries": {{"poi": "二七广场附近有什么好吃的", "house": "金水区2000元以下的整租房"}}, "follow_up_message": ""}}
+{{"intents": ["metro", "house"], "user_queries": {{"metro": "郑州东站怎么坐地铁", "house": "1号线附近的房源"}}, "follow_up_message": ""}}
 {{"intents": ["out_of_scope"], "user_queries": {{}}, "follow_up_message": "你好，我是智租顾问，可以帮你查询郑州的房源、周边景点美食、地铁出行、综合推荐，也可以解答租房相关法律问题，欢迎向我提问。"}}
 
 当前日期：{current_date} (Asia/Shanghai)。
