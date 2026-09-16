@@ -256,7 +256,9 @@ def get_session(session_id):
                 model=conf.model_name,
                 api_key=conf.api_key,
                 base_url=conf.base_url,
-                temperature=0.1
+                temperature=0.1,
+                request_timeout=10,
+                max_retries=1
             )
             sessions[session_id] = {
                 "network": network,

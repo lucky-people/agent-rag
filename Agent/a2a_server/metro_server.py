@@ -34,7 +34,8 @@ llm = ChatOpenAI(
     base_url=conf.base_url,
     api_key=conf.api_key,
     temperature=0.1,
-    request_timeout=10
+    request_timeout=10,
+    max_retries=1
 )
 
 # 数据表 schema
