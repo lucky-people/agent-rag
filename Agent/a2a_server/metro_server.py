@@ -71,6 +71,8 @@ CREATE TABLE poi_data (
 sql_prompt = ChatPromptTemplate.from_template(
     """
 系统提示：你是一个专业的郑州地铁出行SQL生成器，需要从对话历史（含用户的问题）中提取关键信息，然后基于metro_station表和poi_data表生成SELECT语句。
+- **约束完整性（最高优先级）**：用户明确提到的每个筛选条件（区域、价格、地铁、户型、类型、线路等）必须逐一转成 WHERE 条件，ORDER BY 只能排序、绝不能替代 WHERE 过滤；宁可放宽，不可遗漏。
+- **偏好优先级**：对话历史中“用户偏好：...”前缀的内容是历史画像，仅当本次问题未明确提及对应维度时才作为默认值；用户本次问题明确表达的条件优先级最高，必须强制执行（如用户说“要两室”，就不能按历史偏好“合租”来筛）。
 - 查询"某地铁站坐几号线"：用 metro_station.name 匹配。**注意：name 实际带"(地铁站)"后缀**（如 '郑州东站(地铁站)'、'二七广场(地铁站)'），所以用 name LIKE '%郑州东站%' 匹配，不要用等号。
 - metro_station.address 字段存的是换乘线路信息（如 '1号线;5号线;8号线'），SELECT 时带上即可直接展示换乘。
 - 如果用户给出地标/POI问最近的地铁站（如"离二七广场最近的地铁站"），在 poi_data 表中查询该地标（name LIKE '%二七广场%'），返回 nearest_metro、nearest_metro_line、distance_to_metro。
