@@ -1,0 +1,9 @@
+﻿qid,strategy,faithfulness,citation,completeness,answer_len
+Q1,C_混合无Rerank,0,1,0,569
+Q1,D_混合+Rerank,0,0,0,242
+Q5,C_混合无Rerank,0,0,0,7
+Q5,D_混合+Rerank,0,0,0,7
+Q2,C_混合无Rerank,5,5,4,241
+Q2,D_混合+Rerank,5,5,4,228
+Q8,C_混合无Rerank,0,0,3,123
+Q8,D_混合+Rerank,5,5,4,94
