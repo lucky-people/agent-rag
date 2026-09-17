@@ -62,3 +62,8 @@ playwright==1.40.0
 # 如需使用文档加载器（edu_document_loaders），请安装：
 # python-docx、python-pptx、pypdf、pdfplumber、
 # opencv-python、rapidocr-onnxruntime、rapidocr-paddle、modelscope
+
+# ---------- 开发 / 测试依赖 ----------
+# 单元测试:  pip install pytest && python -m pytest tests -q
+# 代码检查:  pip install ruff && python -m ruff check Agent
+# 端到端自测: python tests/e2e_smoke.py（需先启动全部服务）

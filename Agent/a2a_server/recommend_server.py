@@ -238,6 +238,7 @@ SUB_AGENTS = {
     "house":   ("HouseQueryAssistant",   "http://localhost:5006", "🏠 房源推荐"),
     "poi":     ("PoiQueryAssistant",     "http://localhost:5007", "📍 周边景点/POI"),
     "metro":   ("MetroQueryAssistant",   "http://localhost:5008", "🚇 地铁出行"),
+    "legal":   ("LegalQueryAssistant",   "http://localhost:5010", "⚖️ 法律咨询"),
 }
 
 # 多维度拆解提示词：判断用户问题涉及哪些子域，并生成对应的子查询
@@ -249,18 +250,20 @@ split_prompt = ChatPromptTemplate.from_template(
 - house：房源（租金/区域/户型/面积/朝向/楼层/地铁线路）
 - poi：周边景点/公园/餐饮/医疗/住宿等POI
 - metro：地铁线路/站点/换乘/距地铁站的距离
+- legal：租房法律问题（押金、合同、租金纠纷、违约等法律咨询）
 
 输出要求：只输出 JSON，格式为：
 {{"domains": ["house"], "sub_queries": {{"house": "金水区2000元以下的整租房源"}}}}
-- domains 列出所有涉及的域（1-3个）
+- domains 列出所有涉及的域（1-4个）
 - sub_queries 为每个域生成一个独立、自包含、可直接执行的子查询问题
 - 每个子查询只能依赖该域自身的数据，禁止引用其他域的结果。例如：metro 子查询不能写"这些房子离地铁站多远"（房子是house域的结果），应改为"金水区有哪些地铁站"
 - metro 域子查询建议格式："XX区域有哪些地铁站/地铁线路" 或 "XX地标附近的地铁站"
 - poi 域子查询建议格式："XX区域有哪些景点/公园/美食"
 - house 域子查询保留用户原始条件，不要擅自添加用户未提到的条件（如整租/合租/面积/朝向）
+- legal 域子查询直接保留用户的法律问题原文（如"房东不退押金怎么办"），不要改写
 - 如果问题只涉及单一域，domains 只有一个元素
 - 若用户问题同时涉及多个方面（如"房子离地铁站多远"同时涉及房源与地铁距离），必须拆分为多个域（如 house + metro）
-- 如果问题与租房无关（问候、闲聊、法律），domains 为空数组
+- 如果问题与租房无关（问候、闲聊），domains 为空数组
 
 用户问题: {question}
     """
@@ -274,10 +277,46 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
         super().__init__()
         self.network = AgentNetwork(name="RecommendOrchestrator")
         for intent_name, url, _ in SUB_AGENTS.values():
-            self.network.add(intent_name, url)
+            # legal 域 RAG 生成链路较慢，HTTP 读超时放宽到 90s；其余保持默认 30s
+            if intent_name == "LegalQueryAssistant":
+                from python_a2a.client.http import A2AClient as _A2AClient
+                self.network.add(intent_name, _A2AClient(url, timeout=90))
+            else:
+                self.network.add(intent_name, url)
+
+    def _extract_user_question(self, conversation: str) -> str:
+        """从 web_server 传入的「历史+User: xxx」拼接串中提取最后一条纯用户问题。
+
+        web_server 的预取调用会拼上最近历史（可能包含上一轮的回复文本，
+        其中可能含 '租房'/'周边' 等词，会污染规则关键词拆解），
+        因此编排拆解必须只基于用户本次的问题。
+        """
+        if not conversation:
+            return ""
+        for line in reversed(conversation.split("\n")):
+            line = line.strip()
+            if line.startswith("User:"):
+                return line[len("User:"):].strip()
+        return conversation.strip()
 
     def _split_domains(self, conversation: str) -> dict:
         """用LLM拆解用户问题为多域子查询；失败时保守回退（视为单域house）"""
+        # (Agentic RAG) 关键词规则兜底：LLM 偶发漏拆时，按关键词强制补全域
+        _rule_domains = set()
+        _rule_sub = {}
+        _legal_kw = ["押金", "退租", "退房", "违约金", "合同", "租房", "房东", "租客", "租赁", "中介费", "租金", "定金", "物业费", "纠纷", "起诉", "法律", "合法", "维权", "赔偿", "房屋损坏"]
+        _poi_kw = ["附近", "周边", "好吃的", "美食", "景点", "公园", "商场", "咖啡", "餐厅", "小吃", "游玩", "去哪儿玩"]
+        _metro_kw = ["地铁", "号线", "地铁站", "通勤", "几号线", "交通"]
+        _house_kw = ["房源", "租房", "房子", "房租", "租金", "整租", "合租", "户型", "面积", "朝向", "楼层", "小区", "一居室", "两居室", "三居室", "押一付"]
+        if any(k in conversation for k in _legal_kw):
+            _rule_domains.add("legal")
+            _rule_sub["legal"] = conversation
+        if any(k in conversation for k in _poi_kw):
+            _rule_domains.add("poi")
+        if any(k in conversation for k in _metro_kw):
+            _rule_domains.add("metro")
+        if any(k in conversation for k in _house_kw):
+            _rule_domains.add("house")
         try:
             chain = split_prompt | self.llm
             out = chain.invoke({"question": conversation}).content.strip()
@@ -286,15 +325,29 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
                 domains = [d for d in parsed["domains"] if d in SUB_AGENTS]
                 sub_queries = parsed.get("sub_queries", {})
                 if domains:
-                    return {"domains": domains, "sub_queries": sub_queries}
+                    # 并集合并：规则检测出的域若 LLM 漏拆，则补入；sub_query 缺失时用原文
+                    merged = list(dict.fromkeys(domains + sorted(_rule_domains)))
+                    for d in _rule_domains:
+                        if d not in sub_queries or not str(sub_queries.get(d, "")).strip():
+                            sub_queries[d] = _rule_sub.get(d, conversation)
+                    # 去掉明显误判：纯闲聊（无任何规则命中）时以 LLM 结果为准
+                    if not _rule_domains and len(domains) > 1:
+                        merged = domains
+                    return {"domains": merged, "sub_queries": sub_queries}
         except Exception as e:
             logger.error(f"编排拆解失败，回退单域: {str(e)}")
+        # LLM 失败时：规则命中则用规则，否则视为单域 house
+        if _rule_domains:
+            return {"domains": sorted(_rule_domains), "sub_queries": _rule_sub or {"house": conversation}}
         return {"domains": ["house"], "sub_queries": {"house": conversation}}
 
     async def _call_sub_agent(self, domain_key: str, url: str, sub_query: str, timeout: float = 30.0):
         """调用单个子Agent，返回 (域, 文本结果, 状态, 耗时ms)；失败返回 None"""
         import time as _t
         _start = _t.time()
+        # (Agentic RAG) legal 域走 RAG 生成链路, 超时放宽到 90s
+        if domain_key == "legal" and timeout <= 30.0:
+            timeout = 90.0
         try:
             intent_name = SUB_AGENTS[domain_key][0]
             agent = self.network.get_agent(intent_name)
@@ -319,8 +372,29 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
         if not conversation.strip():
             return super().handle_task(task)
 
-        split = self._split_domains(conversation)
+        # 关键：只用本次的纯用户问题做编排拆解（历史拼接串会污染规则关键词）
+        user_question = self._extract_user_question(conversation)
+        logger.info(f"[编排] 提取纯用户问题: {user_question}")
+        split = self._split_domains(user_question)
         domains = split.get("domains", [])
+
+        # 单 legal 域：直接调用 LegalAgent（法律问题不走 text2sql 路径）
+        if domains == ["legal"]:
+            logger.info("[编排] 检测到纯法律咨询，直接调用 LegalAgent")
+            q = split.get("sub_queries", {}).get("legal", user_question)
+            try:
+                async def _run_legal():
+                    return await self._call_sub_agent("legal", SUB_AGENTS["legal"][1], q, timeout=60.0)
+                result = asyncio.run(_run_legal())
+                text = (result or {}).get("text", "")
+                if text:
+                    task.artifacts = [{"parts": [{"type": "text", "text": text}]}]
+                    task.status = TaskStatus(state=TaskState.COMPLETED)
+                    return task
+            except Exception as e:
+                logger.error(f"[编排] LegalAgent 调用失败，降级 text2sql: {e}")
+            return super().handle_task(task)
+
         # 仅当明确涉及 2 个及以上子域才走编排；否则走原 text2sql 单域路径
         if len(domains) < 2:
             return super().handle_task(task)
@@ -333,7 +407,7 @@ class OrchestratedRecommendQueryServer(RecommendQueryServer):
                 coros = []
                 for d in domains:
                     intent_name, url, _ = SUB_AGENTS[d]
-                    q = sub_queries.get(d, conversation)
+                    q = sub_queries.get(d, user_question)
                     coros.append(self._call_sub_agent(d, url, q))
                 results = await asyncio.gather(*coros)
                 return results

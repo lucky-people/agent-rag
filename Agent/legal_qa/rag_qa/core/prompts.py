@@ -95,6 +95,74 @@ class RAGPrompts:
             input_variables=["query"],
         )
 
+
+
+    # todo 1.5 (Agentic RAG) 检索规划 Prompt -> 让 LLM(Agent) 自主决定检索词与检索策略
+    @staticmethod
+    def retrieval_plan_prompt():
+        return PromptTemplate(
+            template="""
+你是一个检索规划器。用户的问题是：{query}
+
+请自主决定本次 RAG 检索方案，输出严格 JSON（不要输出任何其他文字）：
+{{"queries": ["检索词1", "检索词2"], "strategy": "直接检索|假设问题检索|子查询检索|回溯问题检索", "reason": "一句话说明为什么这么规划"}}
+
+要求：
+- queries：1-3 个检索词。第一个用原问题精简版；如果问题涉及多个方面（如押金+违约金），拆成多个检索词覆盖不同方面
+- strategy：根据问题复杂度选择：意图明确选"直接检索"；抽象开放选"假设问题检索"；多实体多维度选"子查询检索"；冗长复杂选"回溯问题检索"
+- 检索词必须是法律问答场景下的有效关键词（如"房东不退押金怎么办" → "房东不退押金"、"押金 退还 法律规定"）
+""",
+            input_variables=["query"],
+        )
+
+    # todo 1.6 (Agentic RAG) 反思判断 Prompt -> Self-RAG 式: 判断答案是否被检索证据充分支持
+    @staticmethod
+    def reflection_prompt():
+        return PromptTemplate(
+            template="""
+你是一个严谨的 RAG 质量评审员。请判断下面的"回答"是否被"检索证据"充分支持。
+
+问题: {query}
+
+检索证据（知识库条文）:
+{context}
+
+回答:
+{answer}
+
+请输出严格 JSON（不要输出任何其他文字）：
+{{"supported": true或false, "reason": "一句话判断依据", "missing": "答案缺失或证据不足的关键信息（没有则填空字符串）"}}
+
+判定标准：
+- supported=true：答案的核心结论能在检索证据中找到依据，且没有遗漏问题明确要求的关键信息
+- supported=false：答案无证据支撑（可能幻觉）、核心结论与证据矛盾、或问题明确要求的信息在证据和答案中都缺失
+- 注意：不要因为证据略少就判 false，只有核心结论悬空或明显缺关键信息时才判 false
+""",
+            input_variables=["query", "context", "answer"],
+        )
+
+    # todo 1.7 (Agentic RAG) 查询改写 Prompt -> 反思不通过时改写检索词, 补充缺失证据
+    @staticmethod
+    def rewrite_query_prompt():
+        return PromptTemplate(
+            template="""
+你是一个检索查询改写器。上一轮检索生成的答案证据不足，请改写检索查询，以检索到缺失的信息。
+
+原问题: {query}
+上一轮检索词: {last_queries}
+缺失信息: {missing}
+评审意见: {reason}
+
+请输出严格 JSON（不要输出任何其他文字）：
+{{"queries": ["改写后的检索词1", "改写后的检索词2"]}}
+
+要求：
+- 针对"缺失信息"重新构造 1-2 个更精准的检索词，重点覆盖缺失的法律要点
+- 检索词应是法律条文检索友好的关键词组合（法律术语 + 场景词）
+""",
+            input_variables=["query", "last_queries", "missing", "reason"],
+        )
+
 # todo 2. 测试代码.
 if __name__ == '__main__':
     # 测试1: 基础RAG回答模版 -> 直接检索.

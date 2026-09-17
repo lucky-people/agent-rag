@@ -231,6 +231,220 @@ class RAGSystem:
 
 
     # 优化2
+
+    # todo 3.5.2 (Agentic RAG) 检索工具化: 把 RAG 检索封装为 Agent 可自主调用的 retrieve 工具
+    def retrieve(self, query, k=None, source_filter=None, strategy=None):
+        """
+        函数作用: (Agentic RAG) 检索工具化入口 —— 返回检索文档 + 引用 + 检索元信息。
+                  供 Agent 自主决定检索词/检索次数后调用（反思循环、跨引擎编排均可复用）。
+        :param query: 检索词（Agent 规划后的检索词）
+        :param k: 检索 TopK（默认 conf.RETRIEVAL_K）
+        :param source_filter: 来源过滤
+        :param strategy: 指定检索策略（None 则自动选择）
+        :return: dict: {"docs": list[Document], "references": list[dict], "meta": dict}
+        """
+        start_t = time.time()
+        k = k or conf.RETRIEVAL_K
+        docs = self.retrieve_and_merge(query, source_filter=source_filter, strategy=strategy)
+        references = self._extract_references(docs)
+        elapsed = round((time.time() - start_t) * 1000, 1)
+        meta = {"query": query, "k": k, "doc_count": len(docs), "elapsed_ms": elapsed}
+        logger.info(f"[Agentic retrieve] 检索词='{query}' 命中 {len(docs)} 篇, 耗时 {elapsed}ms")
+        return {"docs": docs, "references": references, "meta": meta}
+
+    # todo 3.5.3 (Agentic RAG) 反思循环: 检索 -> 生成 -> 自检 -> (不满意)改写查询重检 -> 最终生成
+    def generate_answer_agentic(self, query, source_filter=None, history=None, max_rounds=2):
+        """
+        函数作用: Agentic RAG 生成流程（Self-RAG 式反思）。
+                  流程: ① LLM 规划检索词(Agent 自主决策) -> ② 工具化检索 -> ③ LLM 生成
+                        -> ④ LLM 反思(证据充分性自检) -> ⑤ 不通过则改写查询再检一轮 -> 最终答案
+                  返回: 生成器, 逐段 yield 答案文本; 反思轨迹保存在 self.last_agentic_trace。
+        """
+        # 0. 分类: 通用知识仍走原逻辑（不检索），保证与旧行为一致
+        query_category = self.query_classifier.predict_category(query)
+        logger.info(f"[Agentic] 查询分类: {query_category}")
+        if query_category == "通用知识":
+            prompt_input = self.rag_prompt.format(context="", history=history or "", question=query, phone=conf.CUSTOMER_SERVICE_PHONE)
+            yield from self._streamify(self.llm(prompt_input))
+            return
+
+        # 1. 历史格式化（与 generate_answer 保持一致）
+        history_context = ""
+        if history:
+            history_context = "\n".join([f"Q: {h['question']}\nA: {h['answer']}" for h in history[-5:]])
+            logger.info(f"[Agentic] 使用对话历史: {history_context[:80]}...")
+
+        trace_rounds = []   # 反思轨迹
+        all_docs = []       # 累积证据
+        all_refs = []
+
+        # 2. Agent 规划检索词
+        plan = self._plan_retrieval(query)
+        queries = plan.get("queries") or [query]
+        strategy = plan.get("strategy")
+        logger.info(f"[Agentic] Agent 检索规划: queries={queries}, strategy={strategy}")
+
+        # 3. 多轮反思循环
+        current_answer = ""
+        for rnd in range(1, max_rounds + 1):
+            round_queries = queries
+            # 3.1 工具化检索: 对规划的每个检索词检索并合并
+            round_docs = []
+            round_refs = []
+            for q in round_queries:
+                try:
+                    res = self.retrieve(q, source_filter=source_filter, strategy=strategy)
+                    round_docs.extend(res["docs"])
+                    round_refs.extend(res["references"])
+                except Exception as e:
+                    logger.error(f"[Agentic] 检索失败: {e}")
+            # 按内容去重
+            seen = set()
+            dedup_docs = []
+            for d in round_docs:
+                key = (d.page_content or '')[:200]
+                if key not in seen:
+                    seen.add(key)
+                    dedup_docs.append(d)
+            round_docs = dedup_docs[: conf.CANDIDATE_M]
+            all_docs = round_docs
+            all_refs = round_refs
+            self.last_references = all_refs
+
+            # 3.2 组装上下文并生成答案
+            context = "\n\n".join([d.page_content for d in round_docs]) if round_docs else ""
+            logger.info(f"[Agentic] 第 {rnd} 轮检索到 {len(round_docs)} 篇文档")
+            prompt_input = self.rag_prompt.format(context=context, history=history_context, question=query, phone=conf.CUSTOMER_SERVICE_PHONE)
+            try:
+                current_answer = self._collect_llm(self.llm(prompt_input))
+            except Exception as e:
+                logger.error(f"[Agentic] LLM 生成失败: {e}")
+                current_answer = f"抱歉，处理您的专业咨询问题时出错。请联系人工客服：{conf.CUSTOMER_SERVICE_PHONE}"
+                trace_rounds.append({"round": rnd, "queries": round_queries, "docs": len(round_docs), "supported": False, "reason": f"LLM生成失败: {e}"})
+                break
+
+            # 3.3 反思自检: 判断答案是否被证据充分支持
+            if rnd < max_rounds:
+                reflection = self._reflect(query, context, current_answer)
+                trace_rounds.append({
+                    "round": rnd, "queries": round_queries, "docs": len(round_docs),
+                    "supported": reflection.get("supported", True),
+                    "reason": reflection.get("reason", ""),
+                    "missing": reflection.get("missing", ""),
+                })
+                logger.info(f"[Agentic] 第 {rnd} 轮反思: supported={reflection.get('supported')}, reason={reflection.get('reason')}")
+                if not reflection.get("supported", True):
+                    # 3.4 改写查询, 进入下一轮重检
+                    queries = self._rewrite_query(query, round_queries, reflection)
+                    logger.info(f"[Agentic] 反思不通过, 改写检索词: {queries}")
+                    continue
+                break
+            trace_rounds.append({
+                "round": rnd, "queries": round_queries, "docs": len(round_docs),
+                "supported": True, "reason": "最后一轮, 直接输出"
+            })
+
+        # 4. 保存反思轨迹（供 web_server 展示 / trace 节点）
+        self.last_agentic_trace = {
+            "query": query,
+            "rounds": trace_rounds,
+            "final_docs": len(all_docs),
+            "references": all_refs,
+        }
+        # 5. 流式输出最终答案
+        for i in range(0, len(current_answer), 8):
+            yield current_answer[i:i + 8]
+
+    # ---- Agentic 辅助方法 ----
+    def _streamify(self, gen):
+        """把流式生成器或字符串统一转成逐段 yield 的生成器"""
+        if isinstance(gen, str):
+            for i in range(0, len(gen), 8):
+                yield gen[i:i + 8]
+            return
+        try:
+            for chunk in gen:
+                yield chunk
+        except TypeError:
+            yield str(gen)
+
+    def _parse_json_loose(self, text):
+        """宽松解析 LLM 输出的 JSON（容忍代码围栏/杂文/单双引号混用）"""
+        import json as _json
+        try:
+            return _json.loads(text)
+        except Exception:
+            pass
+        # 去除围栏
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.strip("`")
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:]
+        cleaned = cleaned.strip()
+        # 提取最外层 {...}
+        try:
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start >= 0 and end > start:
+                return _json.loads(cleaned[start:end + 1])
+        except Exception:
+            pass
+        return {}
+
+    def _plan_retrieval(self, query):
+        """Agent 自主规划检索方案: 返回 {"queries": [...], "strategy": "..."}"""
+        try:
+            plan_prompt = RAGPrompts.retrieval_plan_prompt().format(query=query)
+            raw = self._collect_llm(self.llm(plan_prompt))
+            parsed = self._parse_json_loose(raw)
+            queries = parsed.get("queries") or []
+            strategy = parsed.get("strategy")
+            if strategy not in ("直接检索", "假设问题检索", "子查询检索", "回溯问题检索"):
+                strategy = None
+            if queries:
+                return {"queries": [str(q).strip() for q in queries if str(q).strip()][:3], "strategy": strategy}
+        except Exception as e:
+            logger.error(f"[Agentic] 检索规划失败: {e}")
+        return {"queries": [query], "strategy": None}
+
+    def _reflect(self, query, context, answer):
+        """Self-RAG 反思: 判断答案是否被检索证据充分支持"""
+        try:
+            refl_prompt = RAGPrompts.reflection_prompt().format(query=query, context=context[:3000], answer=answer[:1500])
+            raw = self._collect_llm(self.llm(refl_prompt))
+            parsed = self._parse_json_loose(raw)
+            supported = parsed.get("supported")
+            if isinstance(supported, str):
+                supported = supported.strip().lower() in ("true", "1", "是", "yes")
+            return {
+                "supported": bool(supported) if supported is not None else True,
+                "reason": parsed.get("reason", ""),
+                "missing": parsed.get("missing", ""),
+            }
+        except Exception as e:
+            logger.error(f"[Agentic] 反思判断失败, 默认通过: {e}")
+            return {"supported": True, "reason": "", "missing": ""}
+
+    def _rewrite_query(self, query, last_queries, reflection):
+        """反思不通过时, 改写检索词以补充缺失证据"""
+        try:
+            rewrite_prompt = RAGPrompts.rewrite_query_prompt().format(
+                query=query,
+                last_queries="; ".join(last_queries),
+                missing=reflection.get("missing", ""),
+                reason=reflection.get("reason", ""),
+            )
+            raw = self._collect_llm(self.llm(rewrite_prompt))
+            parsed = self._parse_json_loose(raw)
+            queries = parsed.get("queries") or []
+            if queries:
+                return [str(q).strip() for q in queries if str(q).strip()][:2]
+        except Exception as e:
+            logger.error(f"[Agentic] 查询改写失败: {e}")
+        return [query]
+
+    # todo 3.6 定义方法，生成答案
     # todo 3.6 定义方法，生成答案
     def generate_answer(self, query, source_filter=None, history=None):
         """

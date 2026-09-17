@@ -63,7 +63,9 @@ AGENT_DISPLAY_NAMES = {
     "PoiQueryAssistant": "周边探索Agent",
     "MetroQueryAssistant": "交通出行Agent",
     "RecommendQueryAssistant": "综合推荐Agent",
+    "LegalQueryAssistant": "法律咨询Agent",
     "LegalQASystem": "法律问答RAG",
+    "AgenticRAG": "Agentic反思循环",
     "ChatLLM": "通用对话LLM",
     "IntentRecognizer": "意图识别器",
     "LLMSummarizer": "LLM摘要器",
@@ -75,7 +77,9 @@ AGENT_STYLES = {
     "PoiQueryAssistant": {"icon": "📍", "color": "#388E3C", "bg": "#E8F5E9"},
     "MetroQueryAssistant": {"icon": "🚇", "color": "#F57C00", "bg": "#FFF3E0"},
     "RecommendQueryAssistant": {"icon": "⭐", "color": "#7B1FA2", "bg": "#F3E5F5"},
+    "LegalQueryAssistant": {"icon": "⚖️", "color": "#C62828", "bg": "#FFEBEE"},
     "LegalQASystem": {"icon": "⚖️", "color": "#C62828", "bg": "#FFEBEE"},
+    "AgenticRAG": {"icon": "🔁", "color": "#00695C", "bg": "#E0F2F1"},
     "ChatLLM": {"icon": "💬", "color": "#455A64", "bg": "#ECEFF1"},
     "IntentRecognizer": {"icon": "🎯", "color": "#00838F", "bg": "#E0F7FA"},
     "LLMSummarizer": {"icon": "📝", "color": "#5D4037", "bg": "#EFEBE9"},
@@ -181,7 +185,10 @@ def query_legal(question, session_id):
         try:
             collected = ""
             refs = []
-            for item in qa.query(question, session_id=session_id):
+            # (Agentic RAG) 读取开关：默认开启 Self-RAG 反思循环
+            from Agent.legal_qa.base.config import config as _legal_config
+            agentic = getattr(_legal_config, "AGENTIC_RAG_ENABLED", True)
+            for item in qa.query(question, session_id=session_id, agentic=agentic):
                 token = item[0]
                 if token == "__REFERENCES__":
                     if len(item) > 1:
@@ -203,7 +210,14 @@ def query_legal(question, session_id):
                     snip = (r.get('snippet') or '')[:120]
                     head = f"《{law}》" if law else ""
                     if art:
-                        head += f"第{art}条"
+                        a = str(art).strip()
+                        # 规范化条文号：兼容 "第三十五条" / "35" / "第35条" 等写法
+                        if a.endswith("条"):
+                            a = a[:-1]
+                        a = a.lstrip("第")
+                        if not a[0].isdigit():
+                            a = f"第{a}"
+                        head += f"{a}条"
                     ref_lines.append(f"- {head}：{snip}" if head else f"- {snip}")
                 else:
                     ref_lines.append(f"- {r}")
@@ -226,7 +240,10 @@ def query_legal_stream(question, session_id):
         os.chdir(legal_qa_path)
         collected = ""
         try:
-            for item in qa.query(question, session_id=session_id):
+            # (Agentic RAG) 读取开关：默认开启 Self-RAG 反思循环
+            from Agent.legal_qa.base.config import config as _legal_config
+            agentic = getattr(_legal_config, "AGENTIC_RAG_ENABLED", True)
+            for item in qa.query(question, session_id=session_id, agentic=agentic):
                 token = item[0]
                 is_complete = item[1] if len(item) > 1 else False
                 # 检测引用条文标记（特殊格式：("__REFERENCES__", [refs])）
@@ -270,10 +287,12 @@ def get_session(session_id):
     with sessions_lock:
         if session_id not in sessions:
             network = AgentNetwork(name="旅行助手网络")
+            # recommend 编排器可能跨多个子Agent+LLM，HTTP 读超时放宽到 90s，其余保持 30s
+            from python_a2a.client.http import A2AClient as _A2AClient
             network.add("HouseQueryAssistant", "http://localhost:5006")
             network.add("PoiQueryAssistant", "http://localhost:5007")
             network.add("MetroQueryAssistant", "http://localhost:5008")
-            network.add("RecommendQueryAssistant", "http://localhost:5009")
+            network.add("RecommendQueryAssistant", _A2AClient("http://localhost:5009", timeout=90))
             llm = ChatOpenAI(
                 model=conf.model_name,
                 api_key=conf.api_key,
@@ -355,6 +374,18 @@ def process(sess, prompt, session_id="default"):
                                     input_data=query_str, output_data=legal_answer,
                                     start_time=legal_start)
                     responses.append(legal_answer)
+                    # (Agentic RAG) 追加反思轨迹 trace 节点：检索规划/反思轮次/证据数
+                    _qa = _init_legal_qa()
+                    _trace_info = getattr(getattr(_qa, "rag_system", None), "last_agentic_trace", None)
+                    if _trace_info:
+                        _rounds_txt = "; ".join(
+                            f"第{r.get('round')}轮检索{r.get('docs')}篇(支持={r.get('supported')})" 
+                            for r in _trace_info.get("rounds", [])
+                        )
+                        add_trace_step(trace, "AgenticRAG", "Agentic反思循环",
+                                       input_data=query_str,
+                                       output_data=f"检索词规划+自检: {_rounds_txt}",
+                                       start_time=legal_start)
                 except Exception as e:
                     add_trace_step(trace, "LegalQASystem", "法律问答RAG",
                                     input_data=query_str, output_data=str(e),
@@ -573,18 +604,19 @@ def chat_stream():
             prefetched = {}
             if _prefetch_tasks:
                 def _call_agent_worker(pair):
-                    """独立线程内调用单个子Agent（15s超时），返回 (agent_name, raw 或 None)"""
+                    """独立线程内调用单个子Agent（recommend 编排 90s，其余 30s），返回 (agent_name, raw 或 None)"""
                     _aname, _q = pair
                     try:
                         _agent = sess["network"].get_agent(_aname)
                         _hist = '\n'.join(sess["history"].split("\n")[-7:-1]) + f'\nUser: {_q}'
                         _msg = Message(content=TextContent(text=_hist), role=MessageRole.USER)
                         _task = Task(id="task-" + str(uuid.uuid4()), message=_msg.to_dict())
-                        _raw = asyncio.run(asyncio.wait_for(_agent.send_task_async(_task), timeout=30))
+                        _timeout = 90 if _aname == "RecommendQueryAssistant" else 30
+                        _raw = asyncio.run(asyncio.wait_for(_agent.send_task_async(_task), timeout=_timeout))
                         logger.info(f"[并行预取] {_aname} 原始响应: {str(_raw)[:200]}")
                         return _aname, _raw
                     except asyncio.TimeoutError:
-                        logger.warning(f"[并行预取] {_aname} 调用超时（15s）")
+                        logger.warning(f"[并行预取] {_aname} 调用超时（{_timeout if '_timeout' in dir() else 30}s）")
                         return _aname, None
                     except Exception as _e:
                         logger.warning(f"[并行预取] {_aname} 调用失败: {str(_e)}")
@@ -729,12 +761,13 @@ def chat_stream():
                     msg = Message(content=TextContent(text=chat_history), role=MessageRole.USER)
                     task = Task(id="task-" + str(uuid.uuid4()), message=msg.to_dict())
                     try:
-                        # 子Agent调用带15s超时，防止挂起无限阻塞
-                        raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=30))
+                        # 子Agent调用带超时（recommend 编排 90s，其余 30s），防止挂起无限阻塞
+                        _timeout = 90 if agent_name == "RecommendQueryAssistant" else 30
+                        raw_response = asyncio.run(asyncio.wait_for(agent.send_task_async(task), timeout=_timeout))
                         logger.info(f"{agent_name} 原始响应: {raw_response}")
                         agent_result = extract_agent_result(raw_response)
                     except asyncio.TimeoutError:
-                        logger.warning(f"{agent_name} 调用超时（15s），启用降级回复")
+                        logger.warning(f"{agent_name} 调用超时（{_timeout}s），启用降级回复")
                         agent_result = None
                     except Exception as e:
                         logger.warning(f"{agent_name} 调用失败，启用降级回复: {str(e)}")

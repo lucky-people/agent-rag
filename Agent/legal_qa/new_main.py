@@ -246,7 +246,7 @@ class IntegratedQASystem:
 
 
     # todo 2.8 (优化8) 处理查询的核心方法: 整合检索, 大模型生成和对话历史, 返回流式答案.
-    def query(self, query, source_filter=None, session_id=None):
+    def query(self, query, source_filter=None, session_id=None, agentic=False):
         """
         函数功能: 查询集成系统，支持对话历史和流式输出
         :param query:
@@ -309,7 +309,12 @@ class IntegratedQASystem:
             # 初始化收集完整答案的字符串
             collected_answer = ""
             # 调用 RAG 系统生成答案（返回生成器）
-            answer_gen = self.rag_system.generate_answer(query, source_filter=source_filter, history=history)
+            # (Agentic RAG) agentic=True 时走 Self-RAG 反思循环, 否则走原固定 pipeline
+            if agentic:
+                self.logger.info("启用 Agentic RAG 流程（检索规划 + 反思循环）")
+                answer_gen = self.rag_system.generate_answer_agentic(query, source_filter=source_filter, history=history)
+            else:
+                answer_gen = self.rag_system.generate_answer(query, source_filter=source_filter, history=history)
             # 先推送引用条文（特殊标记，web_server 会识别并推送 references 事件）
             refs = getattr(self.rag_system, 'last_references', [])
             if refs:

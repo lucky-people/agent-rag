@@ -132,6 +132,9 @@ class Config:
         # 最终候选数量
         self.CANDIDATE_M = self.config.getint('retrieval', 'candidate_m', fallback=2)
 
+        # (Agentic RAG) 是否启用 Agentic 反思循环: 环境变量优先, 默认开启
+        self.AGENTIC_RAG_ENABLED = os.getenv('ZHIZU_AGENTIC_RAG', '1') in ('1', 'true', 'True', 'yes')
+
         # 应用配置
         # 有效来源列表（安全解析，避免 eval 执行任意表达式）
         import json as _json
