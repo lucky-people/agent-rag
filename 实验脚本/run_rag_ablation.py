@@ -31,6 +31,10 @@ import time
 import warnings
 warnings.filterwarnings("ignore")
 
+# 强制 CPU 运行（规避部分机器 CUDA 驱动/显存崩溃），GPU 环境可注释掉
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+os.environ.setdefault("PYTORCH_NO_CUDA", "1")
+
 # ==================== 路径配置 ====================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
