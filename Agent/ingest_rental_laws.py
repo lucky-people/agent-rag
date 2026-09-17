@@ -22,7 +22,8 @@ from Agent.legal_qa.rag_qa.core.vector_store import VectorStore
 from langchain_core.documents import Document
 
 # 新法律数据目录
-DATA_DIR = r"D:\heima_lesson\多智能体+RAG综合项目\RAG\法律条文\房租法"
+# 新法律数据目录（相对项目根，兼容任意克隆路径：数据位于 数据集/法律条文/房租法）
+DATA_DIR = os.path.join(PROJECT_ROOT, '数据集', '法律条文', '房租法')
 
 
 def extract_pdf_text(pdf_path):

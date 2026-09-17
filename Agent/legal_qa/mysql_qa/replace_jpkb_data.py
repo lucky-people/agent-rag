@@ -9,8 +9,11 @@ import os
 import csv
 import time
 
-sys.path.insert(0, r'D:\heima_lesson\多智能体+RAG综合项目')
-os.chdir(r'D:\heima_lesson\多智能体+RAG综合项目\Agent\legal_qa')
+# 基于脚本位置动态计算项目根目录（兼容任意克隆路径，不再硬编码本机绝对路径）
+# 脚本位于 Agent/legal_qa/mysql_qa/ 下，向上 4 层即项目根
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(os.path.join(_PROJECT_ROOT, 'Agent', 'legal_qa'))
 
 from Agent.legal_qa.mysql_qa.db.mysql_client import MySQLClient
 from Agent.legal_qa.mysql_qa.cache.redis_client import RedisClient

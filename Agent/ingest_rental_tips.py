@@ -20,7 +20,8 @@ sys.path.insert(0, PROJECT_ROOT)  # 保证 Agent.legal_qa.* 绝对导入可用
 from Agent.legal_qa.rag_qa.core.vector_store import VectorStore
 from langchain_core.documents import Document
 
-MD_PATH = r"D:\heima_lesson\多智能体+RAG综合项目\RAG\法律条文\房租法\租房知识普及指南.md"
+# 租房知识普及指南路径（相对项目根，兼容任意克隆路径：数据位于 数据集/法律条文/房租法）
+MD_PATH = os.path.join(PROJECT_ROOT, '数据集', '法律条文', '房租法', '租房知识普及指南.md')
 
 
 def parse_md(path):
