@@ -331,6 +331,7 @@ class RAGSystem:
                     "supported": reflection.get("supported", True),
                     "reason": reflection.get("reason", ""),
                     "missing": reflection.get("missing", ""),
+                    "answer": current_answer,  # 记录该轮答案，供轨迹审计/案例分析
                 })
                 logger.info(f"[Agentic] 第 {rnd} 轮反思: supported={reflection.get('supported')}, reason={reflection.get('reason')}")
                 if not reflection.get("supported", True):
@@ -341,7 +342,8 @@ class RAGSystem:
                 break
             trace_rounds.append({
                 "round": rnd, "queries": round_queries, "docs": len(round_docs),
-                "supported": True, "reason": "最后一轮, 直接输出"
+                "supported": True, "reason": "最后一轮, 直接输出",
+                "answer": current_answer,  # 记录该轮答案，供轨迹审计/案例分析
             })
 
         # 4. 保存反思轨迹（供 web_server 展示 / trace 节点）

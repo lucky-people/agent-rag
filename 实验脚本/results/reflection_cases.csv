@@ -1,0 +1,7 @@
+﻿qid,question,difficulty,naive_ms,naive_len,naive_refs,agentic_ms,agentic_len,agentic_refs,agentic_rounds,first_supported,reflection_triggered,corrected,gain_judge,route
+Q1_押金利息,房东拖延退押金可以要求利息赔偿吗,困难,11047.8,426,2,60005.3,455,2,2,False,True,True,"4,5   | 3,5   | 是",rag
+Q2_扣损坏押金,房东以房屋有损坏为由扣全部押金合法吗,中等,3780.9,252,2,52131.1,242,2,1,True,False,True,,rag
+Q3_提前退租责任,租客提前退租需要承担什么责任,中等,3.0,127,0,3.0,127,0,1,True,False,False,,mysql_direct
+Q4_卖房搬离,房东卖房后租客能拒绝搬走吗,中等,7759.9,435,2,54004.5,344,2,1,True,False,True,,rag
+Q5_装修抵租,租客可以装修房屋抵扣租金吗,困难,5696.8,431,1,68366.2,440,1,2,False,True,True,"4,5   | 4,5   | 是",rag
+Q6_漏水拒交,房东拖延维修卫生间漏水可以拒交房租吗,中等,5527.2,452,2,53862.2,491,2,1,True,False,True,,rag

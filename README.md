@@ -261,6 +261,26 @@
 > - 这正是 Agentic RAG 的**成本-收益边界问题**：反思循环的价值不在于"总是更好"，而在于**在检索证据不足时自我修正**——当首轮答案被 Self-RAG 判定 `supported=false` 时（如"装修抵租"这类需要检索补充的问题），改写查询重检才能给出更完整的答案（答案更长 + 覆盖更多法条）；
 > - 生产实践上应采用**混合策略**：普通问题走朴素 RAG（毫秒-秒级），仅当首轮自检不通过时才升级到反思重检——把 Agentic 的代价花在刀刃上。
 
+### 实验五补充：反思纠错案例（Self-RAG 价值的直接证据）
+
+> 为了验证"反思到底纠了什么错"，对同一批 6 题运行 `实验脚本/run_reflection_cases.py`（GPU），完整记录每轮反思轨迹（检索词 / 文档数 / `supported` / 缺失证据 / 该轮答案）。实测路由与纠错情况：
+
+| 题目 | 路由 | 反思判定 | 纠错结果 |
+|------|------|---------|---------|
+| Q1 押金利息（困难） | RAG | 首轮 `supported=false`（证据未提及利息赔偿） | 改写查询后重检命中资金占用损失依据，**引用准确 3→5** |
+| Q2 扣损坏押金 | RAG | 首轮通过 | — |
+| Q3 提前退租责任 | **MySQL FAQ 直答（3ms）** | 未进 RAG（BM25 命中阈值） | 多级路由免 RAG 成本 |
+| Q4 卖房搬离 | RAG | 首轮通过（第 725 条直接支持） | — |
+| Q5 装修抵租（困难） | RAG | 首轮 `supported=false`（证据仅涉登记备案） | 改写后命中裁判规则，**完整性/引用 4→5** |
+| Q6 漏水拒交 | RAG | 首轮通过（第 713 条直接支持） | — |
+
+<img src="实验脚本/results/reflection_cases_chart.png" width="880"/>
+
+> **这个实验证明了反思机制不是摆设**：
+> - **2/5 走 RAG 的题被自检拦截**（Q1/Q5），全部纠错成功——Self-RAG 不是"每次都反思"，而是**只在证据不足时出手**，平均 1.3 轮即收敛；
+> - Q1 完整过程：首轮检索 3 词（押金/利息/逾期责任）→ 生成"可要求利息但依据不足" → 反思判定 `supported=false`（"证据未提及利息赔偿"）→ 改写为"民法典 押金 逾期返还 利息损失" → 重检命中《民法典》第 584 条（损失赔偿范围）→ 最终答案引用准确 3→5；
+> - 同时展示了**多级路由的工程价值**：Q3 命中 MySQL FAQ 3ms 直答，不需要昂贵反思——"该反思的反思，不该反思的秒回"正是生产级 Agentic RAG 的设计要点。
+
 ### 工程指标
 
 - ✅ **41 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析等）
@@ -275,6 +295,7 @@ python 实验脚本/run_intent_evaluation.py # 意图分类评估
 python 实验脚本/run_e2e_quality_v2.py    # 选型价值评估 v2（检索质量/生产配置/答案质量三层证据）
 python Agent/legal_qa/mysql_qa/compare_rag_redis_mysql.py --warm && python Agent/legal_qa/mysql_qa/compare_rag_redis_mysql.py  # 三链路对比
 python 实验脚本/run_agentic_vs_naive.py  # Agentic vs 朴素端到端对比
+python 实验脚本/run_reflection_cases.py  # 反思纠错案例实验（Self-RAG 价值证据）
 ```
 
 ---
