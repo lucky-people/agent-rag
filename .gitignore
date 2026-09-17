@@ -96,3 +96,9 @@ htmlcov/
 仓库地址.txt
 extract_deps.py
 env_full_deps.txt
+
+# ========== 运行产物（可重新生成，不上传） ==========
+# replace_jpkb_data.py 自动备份
+Agent/legal_qa/mysql_qa/data/backup/
+# 链路对比实验结果
+Agent/legal_qa/results/

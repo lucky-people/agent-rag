@@ -10,7 +10,7 @@
 
 面向郑州本地租房场景的 **多智能体协作 + 检索增强生成（RAG）** 智能问答系统：输入一句自然语言，系统自动完成 **意图识别 → 多智能体编排 → 数据库 / 知识库检索 → 流式回复**，覆盖房源查询、地铁出行、周边探索、综合推荐、法律问答与合同审查六大场景。
 
-> **技术栈**：Python · Flask(SSE) · A2A 多智能体协议 · MCP 工具调用 · BERT 意图分类 · BM25 + BGE-M3 混合检索 · BGE Reranker · Milvus · Redis 缓存 · MySQL · 通义千问 LLM
+> **技术栈**：Python · Flask(SSE) · A2A 多智能体协议 · MCP 工具调用 · LLM 意图路由 · BERT 查询分类 · BM25 + BGE-M3 混合检索 · BGE Reranker · Milvus · Redis 缓存 · MySQL · 通义千问 LLM
 
 ---
 
@@ -65,7 +65,7 @@
 | 🧠 **多智能体编排** | 4 个子智能体通过 A2A 协议互联；复杂问题（"1号线附近2000以下房源"）由 RecommendAgent 作为**编排器**：LLM 拆解子任务 → 并行调度 House / Poi / Metro → 汇总综合推荐 |
 | ⚡ **意图级并行预取** | 多意图问题（"金水区房源 + 1号线 + 景点"）由 web_server 线程池**并发预取**全部子智能体，按原顺序**保序输出**，总延迟 ≈ 最慢子智能体 |
 | 🔍 **RAG 混合检索** | BM25 关键词 + BGE-M3 稠密 / 稀疏双向量加权融合，再经 BGE Reranker 重排序，兼顾召回与精度（消融实验见文末） |
-| 🎯 **BERT 意图分类** | 基于 `bert-base-chinese` 微调（800 条训练样本），支持多意图组合识别，租房常识关键词强制走 RAG 保引用 |
+| 🎯 **意图路由** | Web 层 LLM 意图识别：识别 `house/poi/metro/recommend/legal/chat` 多意图组合并自动改写子查询；RAG 子系统内基于 `bert-base-chinese` 微调的 BERT 分类器区分"通用知识/专业咨询" |
 | ⚡ **SSE 流式响应** | 前端流式输出 + 房源卡片渐进式渲染，解析到一套就渲染一套，观感极佳 |
 | 🔗 **智能体链路追踪** | 每次提问实时展示调用了哪些智能体、顺序、耗时；编排器的子调用展开为独立 SubAgent 节点（**多智能体可观测性**） |
 | 🚀 **Redis 缓存加速** | 高频租房常识命中 Redis 直接返回，跳过完整 RAG 链路，响应快约 **5 倍** |
@@ -101,7 +101,7 @@
 用户提问 "1号线附近2000以下的房源"
         │
         ▼
-① BERT 意图分类 ──► 命中 {recommend}（跨领域组合意图）
+① LLM 意图识别 ──► 命中 {recommend}（跨领域组合意图）
         │
         ▼
 ② RecommendAgent 编排器：LLM 拆解子任务
@@ -119,13 +119,15 @@
 
 ### 意图路由总览
 
+> 意图识别由 **LLM（qwen-plus）** 完成，支持多意图组合识别与子查询改写；RAG 子系统内部再经 **BERT 分类器** 区分"通用知识 / 专业咨询"。
+
 | 意图 | 子智能体 | 数据源 | 示例 |
 |------|---------|--------|------|
 | `house` | HouseQueryAssistant | house_listing | 金水区2000元以下整租房 |
 | `metro` | MetroQueryAssistant | metro_station | 郑州东站坐几号线 |
 | `poi` | PoiQueryAssistant | poi_data | 二七广场附近美食 |
 | `recommend` | RecommendQueryAssistant（多智能体编排） | 多表联合 | 1号线附近2000以下房源 |
-| `legal` | LegalQASystem（RAG） | 法律知识库 + FAQ | 房东不退押金怎么办 |
+| `legal` | LegalQASystem（RAG） | 法律知识库（Milvus）+ FAQ（MySQL laws_all） | 房东不退押金怎么办 |
 | `chat` | ChatLLM（通用对话） | — | 你好 / 你是谁 |
 
 ---
@@ -137,16 +139,25 @@
 ├── Agent/                          # 主系统代码
 │   ├── web_server.py               # Web 后端入口（Flask :8501，意图路由 + SSE 流式 + 并行预取）
 │   ├── config.py                   # 配置（密钥读取自 config_local/，环境变量优先）
+│   ├── main_prompts.py             # 意图识别 / 结果总结提示词
+│   ├── user_system.py              # 用户注册 / 偏好 / 收藏 / 历史
 │   ├── a2a_server/                 # 多智能体协作层（A2A 协议）
 │   │   ├── base_text2sql_server.py #   Text2SQL 智能体抽象基类（SQL生成 / 修正重试 / 连接重试）
 │   │   ├── house_server.py         #   房源查询智能体
 │   │   ├── metro_server.py         #   地铁出行智能体
 │   │   ├── poi_server.py           #   周边探索智能体
-│   │   └── recommend_server.py     #   综合推荐智能体（多智能体编排器）
+│   │   ├── recommend_server.py     #   综合推荐智能体（多智能体编排器）
+│   │   └── legal_agent_server.py   #   法律咨询智能体（RAG 封装）
 │   ├── mcp_server/                 # 工具执行层（MCP 服务器，统一封装 SQL + 只读白名单）
 │   ├── legal_qa/                   # 法律问答子系统（RAG 引擎 + BM25 + Redis 缓存 + BERT 分类）
+│   │   ├── new_main.py             #   IntegratedQASystem 集成入口（MySQL + Redis + BM25 + RAG）
+│   │   ├── mysql_qa/               #   MySQL 客户端 · Redis 缓存 · BM25 检索 · FAQ 问答对
+│   │   └── rag_qa/                 #   Milvus 向量库 · RAG 检索生成 · BERT 查询分类 · 文档加载器
 │   ├── 数据库操作/                  # 数据采集（房天下爬虫 / 高德 POI / 地铁）
 │   ├── sql/rental_schema.sql       # 数据库表结构
+│   ├── sql/seed_data.sql           # 演示种子数据（52 房源 / 15 地铁站 / 15 POI）
+│   ├── ingest_rental_laws.py       # 法律条文向量化入库（Milvus）
+│   ├── ingest_rental_tips.py       # 租房知识普及指南入库（Milvus）
 │   └── 启动系统.bat / start.sh     # 一键启动脚本
 ├── docs/                           # 文档与图件
 │   ├── architecture_v3.html          # 架构图源文件
@@ -178,15 +189,25 @@ docker compose up -d
 # 导入表结构与演示种子数据（52 条房源 / 15 个地铁站 / 15 个 POI）
 docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/rental_schema.sql
 docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
+
+# 创建法律问答 FAQ 库（laws_all）并导入租房问答对（BM25 检索依赖 jpkb 表）
+docker exec -i zhizu-mysql mysql -uroot -pzhizu123 -e "CREATE DATABASE IF NOT EXISTS laws_all CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+python Agent/legal_qa/mysql_qa/replace_jpkb_data.py
 ```
+
+> 说明：`rental` 库承载房源 / POI / 地铁等结构化数据；`laws_all` 库承载法律 FAQ（jpkb 表）与法律问答会话历史（conversations 表），由 `legal_qa` 子系统使用。
 
 ### 2. 配置密钥
 
-复制仓库模板创建 `config_local/` 并填入真实密钥（已 `.gitignore`，不会提交）：
+基于仓库模板创建配置并填入真实密钥（`config_local/` 已 `.gitignore`，不会提交）：
+
+1. 将 `Agent/legal_qa/config.ini.example` 复制为 `config_local/config.ini`，填写 MySQL / Redis / Milvus / LLM（DashScope）各项连接信息
+2. 创建 `config_local/keys.py`，填写 `DASHSCOPE_API_KEY`、`MYSQL_PASSWORD`、`REDIS_PASSWORD`（供 `Agent/config.py` 读取，环境变量优先）
+3. 如需以环境变量方式配置，可参考 `Agent/config.py.example`（脱敏模板）
 
 ```
 config_local/
-├── config.ini     # MySQL / Redis / Milvus / LLM 配置
+├── config.ini     # MySQL / Redis / Milvus / LLM 配置（来自 legal_qa/config.ini.example）
 └── keys.py        # DASHSCOPE_API_KEY / MYSQL_PASSWORD / REDIS_PASSWORD
 ```
 
@@ -204,7 +225,10 @@ pip install -r requirements.txt
 
 打开 **http://localhost:8501** 即可使用。
 
-> 提示：法律问答需先构建向量库（可选步骤，不影响房源 / 地铁 / POI / 闲聊）：`python Agent/ingest_rental_laws.py`
+> 提示：法律问答需先构建向量库（可选步骤，不影响房源 / 地铁 / POI / 闲聊）：
+> - 法律条文向量化入库：`python Agent/ingest_rental_laws.py`
+> - 租房知识普及指南入库（租房常识保引用）：`python Agent/ingest_rental_tips.py`
+> - FAQ 问答对（BM25 检索）在步骤 1 中通过 `replace_jpkb_data.py` 导入 `laws_all.jpkb` 表
 
 ---
 
