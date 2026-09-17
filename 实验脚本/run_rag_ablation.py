@@ -388,56 +388,13 @@ with open(summary_path, "w", encoding="utf-8") as f:
             f"{(summary['D_混合+Rerank']['recall@5'] - summary['A_纯BM25']['recall@5'])*100:.1f}%\n")
 print(f"  ✅ 汇总报告: {summary_path}")
 
-# 3. 柱状图
-try:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    plt.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "DejaVu Sans"]
-    plt.rcParams["axes.unicode_minus"] = False
-
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    strategy_names = list(summary.keys())
-    short_names = [n.split("_", 1)[1] if "_" in n else n for n in strategy_names]
-    colors = ["#90a4ae", "#42a5f5", "#66bb6a", "#ff7043"]
-
-    # Recall@5
-    recalls = [summary[n]["recall@5"] for n in strategy_names]
-    bars1 = axes[0].bar(short_names, recalls, color=colors)
-    axes[0].set_title("Recall@5 对比", fontsize=14, fontweight="bold")
-    axes[0].set_ylabel("Recall@5")
-    axes[0].set_ylim(0, 1.0)
-    for bar, val in zip(bars1, recalls):
-        axes[0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-                     f"{val:.3f}", ha="center", fontsize=11)
-
-    # MRR
-    mrrs = [summary[n]["mrr"] for n in strategy_names]
-    bars2 = axes[1].bar(short_names, mrrs, color=colors)
-    axes[1].set_title("MRR 对比", fontsize=14, fontweight="bold")
-    axes[1].set_ylabel("MRR")
-    axes[1].set_ylim(0, 1.0)
-    for bar, val in zip(bars2, mrrs):
-        axes[1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-                     f"{val:.3f}", ha="center", fontsize=11)
-
-    # 平均耗时
-    latencies = [summary[n]["avg_latency_ms"] for n in strategy_names]
-    bars3 = axes[2].bar(short_names, latencies, color=colors)
-    axes[2].set_title("平均检索耗时对比", fontsize=14, fontweight="bold")
-    axes[2].set_ylabel("耗时 (ms)")
-    for bar, val in zip(bars3, latencies):
-        axes[2].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
-                     f"{val:.0f}ms", ha="center", fontsize=11)
-
-    plt.suptitle("RAG检索策略消融实验结果", fontsize=16, fontweight="bold", y=1.02)
-    plt.tight_layout()
-    chart_path = os.path.join(RESULTS_DIR, "rag_ablation_chart.png")
-    plt.savefig(chart_path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"  ✅ 对比柱状图: {chart_path}")
-except Exception as e:
-    print(f"  ⚠️  图表生成失败（不影响实验结果）: {e}")
+# 3. 图表
+# 说明：Recall@5/MRR 是"词面命中"口径的召回指标，与 Rerank 的语义排序目标不对齐
+# （消融实测中 Rerank 的 MRR 反而低于混合检索，正是"指标与假设错位"的体现）。
+# 选型价值请以 run_e2e_quality_v2.py 的三层证据（检索质量直接评判/生产配置 Top-2/答案质量）为准。
+# 因此这里不再生成 Recall@5/MRR 对比图，仅保留 CSV 数据作为消融原始记录。
+print("  ℹ️  Recall@5/MRR 为词面口径消融数据，不生成对比图（选型价值见 run_e2e_quality_v2.py）")
+print("  ℹ️  耗时对比图见 results/ablation_gpu_chart.png（GPU 实测 + 生产路径标注）")
 
 # ==================== 清理 ====================
 try:

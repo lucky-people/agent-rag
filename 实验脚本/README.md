@@ -1,6 +1,6 @@
 # 毕业设计实验脚本 - 多智能体+RAG租房咨询系统
 
-本目录包含毕业设计所需的两组核心实验，可直接运行并产出论文/PPT所需的图表和数据。
+本目录包含毕业设计所需的评估实验，可直接运行并产出论文/PPT/面试展示所需的图表和数据。
 
 ## 📁 目录结构
 
@@ -8,143 +8,116 @@
 实验脚本/
 ├── README.md                          # 本说明文档
 ├── data/
-│   ├── rag_test_questions.json        # RAG检索测试集（30道租房法律问题，带标注关键词）
+│   ├── rag_test_questions.json        # RAG 检索测试集（30道租房法律问题，带标注关键词）
+│   ├── intent_train_data.jsonl        # 意图分类训练集（BERT 微调）
 │   └── intent_test_data.jsonl         # 意图分类测试集（60条，通用知识/专业咨询各30条）
-├── results/                           # 实验结果输出目录（运行后自动生成）
-│   ├── rag_ablation_results.csv       # RAG消融实验详细结果
-│   ├── rag_ablation_summary.txt       # RAG消融实验汇总报告
-│   ├── rag_ablation_chart.png         # RAG消融实验对比柱状图
-│   ├── intent_evaluation_report.txt   # 意图分类评估完整报告
-│   ├── intent_confusion_matrix.png    # 意图分类混淆矩阵图
-│   └── intent_misclassified.csv       # 意图分类误分类案例明细
-├── run_rag_ablation.py                # 实验一：RAG检索策略消融实验（真实检索）
-└── run_intent_evaluation.py           # 实验二：意图分类与路由机制量化评估
+├── results/                           # 实验结果输出目录（关键图表已入库）
+│   ├── intent_confusion_matrix.png    # 意图分类混淆矩阵 + 类别 P/R/F1
+│   ├── e2e_v2_chart.png               # 【核心】混合+Rerank 选型价值三层证据图
+│   ├── ablation_gpu_chart.png         # GPU 实测耗时 + 生产路径标注
+│   ├── chain_latency_chart.png        # MySQL/Redis/RAG 三链路延迟对比
+│   ├── rag_ablation_results.csv       # RAG 消融原始数据（Recall@5/MRR/耗时）
+│   └── e2e_retrieval_scores.csv 等    # v2 评估明细（检索质量/答案质量/生产配置）
+├── run_intent_evaluation.py           # 实验一：意图分类与路由机制量化评估
+├── run_e2e_quality_v2.py              # 实验二：混合+Rerank 选型价值评估（三层证据）★核心
+├── run_agentic_vs_naive.py            # 实验三：Agentic vs 朴素端到端对比
+├── run_rag_ablation.py                # 补充实验：RAG 检索策略消融（仅出数据，不出图）
+├── run_gen_charts_v3.py               # 生成 e2e_v2_chart.png
+└── generate_intent_train_data.py      # 生成意图分类训练数据
 ```
-
-> **说明**：`results/` 与 `data/` 已纳入版本管理，仓库内置两组的**结果展示图**与**测试集**，
-> 克隆后可直接查看图表、复跑实验。
 
 ---
 
-## 🧪 实验一：RAG检索策略消融实验
+## 🧪 实验一：意图分类与路由机制量化评估
 
 ### 实验目的
-对比4种检索策略在租房法律问答场景下的检索效果，论证"混合检索+Reranker"方案的优越性。
-
-### 4种对比策略
-
-| 策略 | 名称 | 说明 |
-|---|---|---|
-| A | 纯BM25 | 基于MySQL常见问题库的关键词检索（传统方案基线） |
-| B | 纯稠密向量 | BGE-M3稠密向量语义检索 |
-| C | 混合检索（无Rerank） | 稠密向量+稀疏向量加权融合（权重1.0:0.7） |
-| D | 混合检索+Reranker | 混合检索后经BGE Reranker重排序（系统当前方案） |
-
-### 评估指标
-- **Recall@5**：前5条检索结果中命中相关文档的问题占比
-- **MRR**（Mean Reciprocal Rank）：第一个相关文档出现位置的倒数的均值
-- **平均检索耗时**：单条查询的平均检索时间（ms）
-
-### 相关度判定标准
-检索结果文档内容包含至少2个标注关键词即视为相关。
-
-### 运行方法
-
-```bash
-cd 实验脚本
-python run_rag_ablation.py
-```
-
-### 预期产出
-- `results/rag_ablation_results.csv`：30道题 × 4种策略的详细结果
-- `results/rag_ablation_summary.txt`：汇总指标 + 结论分析
-- `results/rag_ablation_chart.png`：Recall@5 / MRR / 耗时 三联柱状图
-
-### 论文/PPT使用建议
-- 在"系统设计"章节说明4种策略的技术原理
-- 在"实验与分析"章节展示对比柱状图和数据表格
-- 核心论点：**混合检索+Reranker在Recall@5和MRR上均显著优于纯BM25和纯向量检索，证明了多策略融合的有效性**
-
----
-
-## 🧪 实验二：意图分类与路由机制量化评估
-
-### 实验目的
-评估BERT意图分类器在租房场景下的分类效果，分析误分类案例并提出优化方向。
+评估 BERT 意图分类器在租房场景下的分类效果，分析误分类案例并提出优化方向。
 
 ### 分类类别
-- **通用知识**：不需要检索法律文档，LLM可直接回答（如"你好"、"郑州哪个区租房便宜"）
+- **通用知识**：不需要检索法律文档，LLM 可直接回答（如"你好"、"郑州哪个区租房便宜"）
 - **专业咨询**：需要检索法律文档的专业问题（如"房东不退押金怎么办"）
 
 ### 评估指标
-- **准确率（Accuracy）**：整体分类正确的比例
-- **精确率（Precision）**：各类别预测正确的比例
-- **召回率（Recall）**：各类别被正确识别的比例
-- **F1分数**：精确率和召回率的调和平均
-- **混淆矩阵**：展示预测标签与真实标签的匹配情况
-
-### 特殊分析
-- **规则前置兜底分析**：系统对"押金""退租"等关键词强制走专业咨询，评估该规则的命中率和准确率
-- **误分类案例分析**：按"误报（通用→专业）"和"漏报（专业→通用）"分组展示
+准确率 / 精确率 / 召回率 / F1 / 混淆矩阵（实测 Accuracy=98.3%，仅 1 条误分）。
 
 ### 运行方法
 
 ```bash
-cd 实验脚本
 python run_intent_evaluation.py
 ```
 
 ### 预期产出
-- `results/intent_evaluation_report.txt`：完整评估报告（7个章节）
-- `results/intent_confusion_matrix.png`：混淆矩阵热力图 + 各类别指标对比图
-- `results/intent_misclassified.csv`：误分类案例明细（含错误类型、是否命中规则）
-
-### 论文/PPT使用建议
-- 在"系统设计"章节说明意图分类的架构（BERT二分类 + 规则前置兜底）
-- 在"实验与分析"章节展示混淆矩阵和分类报告
-- 核心论点：**意图分类器在租房场景下达到较高准确率，规则前置兜底有效提升了专业咨询的召回率，同时分析了误分类案例并提出了数据增强和领域预训练的优化方向**
+- `results/intent_evaluation_report.txt`：完整评估报告
+- `results/intent_confusion_matrix.png`：混淆矩阵 + 类别指标
+- `results/intent_misclassified.csv`：误分类案例明细
 
 ---
 
-## 📊 数据集说明
+## 🧪 实验二：混合检索 + Rerank 选型价值评估（三层证据）★核心
 
-### RAG检索测试集 (`data/rag_test_questions.json`)
-- 共30道租房法律问题，覆盖10个类别
-- 每道题包含：问题ID、类别、问题文本、相关关键词（5个）、难度
-- 类别分布：押金退还(5)、合同签订(4)、提前退租(4)、维修责任(3)、房东卖房(3)、租金上涨(2)、转租(2)、违约责任(3)、居住安全(2)、中介费(2)
+> 对应 README「实验二」。针对"为什么需要混合检索 + Rerank"这一核心选型问题，
+> 设计三层评估，每层均由 LLM 独立评判（0-5 分），评判时**可见对应检索上下文**，GPU 实测。
 
-### 意图分类测试集 (`data/intent_test_data.jsonl`)
-- 共60条标注数据，JSONL格式（每行一个JSON对象）
-- 通用知识30条 + 专业咨询30条，类别均衡
-- 通用知识涵盖：问候、天气、租房常识、区域咨询、价格咨询等
-- 专业咨询涵盖：押金、合同、退租、维修、转租、违约等法律问题
+| 证据层 | 结论 |
+|---|---|
+| 检索质量直接评判 | D 相关性 4.00 vs C 2.75（+45%）vs B 2.12——Rerank 让进 LLM 的文档最相关 |
+| 生产配置 Top-2（CANDIDATE_M=2） | D 综合 2.33 vs C 1.50（+55%）——排序质量直接决定答案质量 |
+| 答案质量（Top-5 可见上下文） | D 引用准确率 2.19 全场最高 |
+
+> **方法论要点**：最初用 Recall@5/MRR（词面命中口径）评估时，Rerank 反而更低——
+> 这是"指标与待验证假设错位"的典型例子（Rerank 优化的是语义排序，词面口径测不到）。
+> 修复评估方法（评判可见上下文 + 直接评检索质量 + 生产配置对比）后，选型价值稳定显现。
+
+### 运行方法
+
+```bash
+python run_e2e_quality_v2.py    # 生成 e2e_retrieval_scores.csv / e2e_answer_quality_v2.csv / e2e_prod_top2_scores.csv
+python run_gen_charts_v3.py     # 生成 results/e2e_v2_chart.png
+```
+
+---
+
+## 🧪 实验三：Agentic RAG vs 朴素 RAG 端到端对比
+
+同一批 6 道题（含困难样本），对比朴素 RAG（固定 pipeline）与 Agentic RAG（检索规划 + 反思循环 + 查询改写）。
+
+实测：朴素 6.9s / Agentic 71.2s（含反思+重检索，CPU 推理），成功率均 100%，Agentic 平均反思 1.3 轮、答案更长（376 vs 347 字）。
+
+> **设计权衡**：反思循环的价值不在于"总是更好"，而在于**首轮证据不足时自我修正**。
+> 生产实践采用混合策略：普通问题走朴素 RAG，仅当自检不通过才升级反思重检。
+
+### 运行方法
+
+```bash
+python run_agentic_vs_naive.py
+```
+
+---
+
+## 🧪 补充实验：RAG 检索策略消融（仅出数据）
+
+4 策略（纯 BM25 / 纯稠密 / 混合无 Rerank / 混合+Rerank）在 30 道题上的 Recall@5 / MRR / 耗时。
+
+> **注意**：该实验使用**词面命中（≥2 个标注关键词）**判定相关性，与 Rerank 的语义排序目标不对齐，
+> 因此 Rerank 的 MRR 反而偏低——这是评估方法论的教材级案例，不作为选型依据。
+> 选型价值以实验二（v2 三层证据）为准。脚本仅输出 CSV 数据，不生成对比图。
+
+```bash
+python run_rag_ablation.py
+```
 
 ---
 
 ## ⚙️ 环境依赖
 
-实验脚本依赖项目已有的Python环境，需要以下库（项目环境中应已安装）：
-
 ```
-torch
-transformers
-pymilvus
-rank_bm25
-numpy
-mysql-connector-python
-redis
-matplotlib
-scikit-learn
-openai
+torch  transformers  pymilvus  rank_bm25  numpy
+mysql-connector-python  redis  matplotlib  scikit-learn  openai
 ```
-
-如果缺少matplotlib，可通过 `pip install matplotlib` 安装（仅用于生成图表，不影响实验数据）。
-
----
 
 ## 📝 注意事项
 
-1. **运行前确保后端服务已启动**：RAG实验需要连接Milvus向量库、MySQL、Redis，请先启动项目后端
-2. **首次运行较慢**：BERT分类器和BGE嵌入模型首次加载需要时间，后续运行会缓存
-3. **结果展示**：`results/` 内已内置两组实验的结果图与明细，可直接用于论文/PPT；如需复现最新结果，运行对应脚本会覆盖同名文件
-4. **可扩展测试集**：如需更多数据，可在`data/`目录下的JSON/JSONL文件中追加条目，格式保持一致即可
+1. **运行前确保后端服务已启动**：RAG 实验需要 Milvus（db_name=`laws_all`）、MySQL、Redis
+2. **GPU 加速**：设 `CUDA_VISIBLE_DEVICES=0` 并使用 GPU 版模型（详见 README 实验三）
+3. **清理缓存**：评估/对比脚本运行前需清 Redis `rag_answer:*` 缓存键，避免污染结果
+4. **结果展示**：`results/` 内已内置关键结果图，可直接用于论文/PPT/面试展示
