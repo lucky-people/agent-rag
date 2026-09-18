@@ -1,0 +1,4 @@
+﻿strategy,faithfulness_mean,answer_relevancy_mean
+B_纯稠密,0.6346,0.7684
+C_混合无Rerank,0.6154,0.8552
+D_混合+Rerank,0.4287,0.6915

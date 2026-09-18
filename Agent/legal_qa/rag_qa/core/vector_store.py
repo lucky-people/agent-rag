@@ -30,6 +30,7 @@ from sentence_transformers import CrossEncoder
 from Agent.legal_qa.rag_qa.core.document_processor import process_documents
 import hashlib
 import os
+import re
 
 # 统一使用以 Agent.legal_qa 为根的绝对导入, 不再手动修改 sys.path.
 from Agent.legal_qa.base.config import Config
@@ -317,17 +318,7 @@ class VectorStore:
 
         # len(parent_docs) > CANDIDATE_M 时才执行重排序，选出更相关的 Top-M
         try:
-            pairs = [[query, doc.page_content] for doc in parent_docs]
-            scores = self.reranker.predict(pairs)
-
-            # 按得分降序排序
-            ranked_parent_docs = [
-                doc for _, doc in sorted(
-                    zip(scores, parent_docs),
-                    key=lambda x: x[0],  # 只按分数排序
-                    reverse=True
-                )
-            ]
+            ranked_parent_docs = self.rerank_docs(query, parent_docs)
             return ranked_parent_docs[:conf.CANDIDATE_M]
         except Exception as e:
             logger.error(f"重排序失败: {e}")
@@ -351,6 +342,48 @@ class VectorStore:
         # # 13. 返回重排序后的父文档列表 -> Top-M个父文档
         # return ranked_parent_docs[:conf.CANDIDATE_M]
 
+
+
+    # todo 3.4.1 定义函数 -> 条款级重排: 解决长文档(含多个法条)重排时相关性信号被稀释的问题.
+    # 背景: BGE-Reranker 对'整篇文档'打分, 若父文档是多个法条的连续切片(如第720~724条),
+    #       关键条款的相关性会被同文档内其他条款稀释, 导致相关文档被挤出 Top-M.
+    # 方案: 长文档按"第X条"切分, 逐条打分取 max(该文档的相关性); 短文档/无条款结构文档整篇打分.
+    _ARTICLE_SPLIT_RE = re.compile(r"(?=第[一二三四五六七八九十百千零〇两0-9]+条)")
+
+    def rerank_docs(self, query, docs, min_split_len=500, min_art_len=20):
+        """
+        条款级重排: 长文档按法条切分打分取 max, 短文档整篇打分
+        :param query: 用户查询文本
+        :param docs: 候选父文档列表(Document)
+        :param min_split_len: 超过该字符数(约BGE-Reranker截断窗口内)才按条款切分
+        :param min_art_len: 条款切片的最短字符数, 过滤半条碎片
+        :return: 按相关性降序排列的文档列表
+        """
+        if not docs:
+            return []
+        pairs, owners = [], []
+        for doc in docs:
+            content = doc.page_content
+            if len(content) > min_split_len:
+                arts = [a.strip() for a in self._ARTICLE_SPLIT_RE.split(content)]
+                arts = [a for a in arts if len(a) >= min_art_len]
+                if len(arts) >= 2:
+                    for a in arts:
+                        pairs.append([query, a])
+                        owners.append(id(doc))
+                    continue
+            pairs.append([query, content])
+            owners.append(id(doc))
+        try:
+            scores = self.reranker.predict(pairs)
+            doc_scores = {}
+            for doc_id, sc in zip(owners, scores):
+                doc_scores[doc_id] = max(doc_scores.get(doc_id, float("-inf")), float(sc))
+            ranked = sorted(docs, key=lambda d: doc_scores.get(id(d), float("-inf")), reverse=True)
+            return ranked
+        except Exception as e:
+            logger.error(f"条款级重排失败: {e}")
+            return docs
 
 
     # todo 3.5 定义函数 -> 从子块列表中提取去重的父文档.
