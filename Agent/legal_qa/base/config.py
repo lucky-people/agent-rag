@@ -99,7 +99,8 @@ class Config:
 
         # Milvus 配置
         # Milvus 主机地址
-        self.MILVUS_HOST = os.getenv('MILVUS_HOST', self.config.get('milvus', 'host', fallback='localhost'))
+        # 127.0.0.1 而非 localhost: Windows 下 localhost 可能解析为 ipv6 ::1, 而 Docker Milvus 仅监听 ipv4, 导致连接被拒
+        self.MILVUS_HOST = os.getenv('MILVUS_HOST', self.config.get('milvus', 'host', fallback='127.0.0.1'))
         # Milvus 端口
         self.MILVUS_PORT = os.getenv('MILVUS_PORT', self.config.get('milvus', 'port', fallback='19530'))
         # Milvus 数据库名
