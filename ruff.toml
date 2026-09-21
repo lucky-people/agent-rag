@@ -7,10 +7,10 @@ target-version = "py310"
 exclude = [
     "config_local",          # 本地密钥，不入库
     "models",                # 模型权重与缓存
-    "数据集",                 # 原始数据
+    "datasets",                # 原始数据
     "图片",                   # 截图素材
     "docs",                  # 文档与图件
-    "实验脚本/results",       # 实验输出产物
+    "scripts/results",       # 实验输出产物
     ".git",
     "__pycache__",
     "*.pyc",
@@ -19,12 +19,12 @@ exclude = [
 [lint]
 select = ["E4", "E7", "E9", "F"]
 
-# 项目惯例：先注入 sys.path 再导入内部模块（Agent 与实验脚本统一此写法），
+# 项目惯例：先注入 sys.path 再导入内部模块（Agent 与scripts统一此写法），
 # 因此 E402（import 不在文件顶部）按目录豁免，避免误报
 # E701（单行 if 提前返回）为项目惯用的 guard clause 写法，可读性良好，豁免
 [lint.per-file-ignores]
 "Agent/**/*.py" = ["E402"]
-"实验脚本/**/*.py" = ["E402"]
+"scripts/**/*.py" = ["E402"]
 "tests/**/*.py" = ["E402"]
 "Agent/web_server.py" = ["E701"]
-"实验脚本/run_intent_evaluation.py" = ["E701"]
+"scripts/run_intent_evaluation.py" = ["E701"]

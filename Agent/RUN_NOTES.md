@@ -18,7 +18,7 @@
 
 数据存放在 **`rental`** 数据库（`Agent/config.py` 指向该库）：
 
-- `house_listing` —— 贝壳租房郑州站房源（`数据库操作/爬虫.py`）
+- `house_listing` —— 贝壳租房郑州站房源（`data_collection/crawler.py`）
 - `poi_data` —— 高德POI：旅游景点/公园广场/医疗保健/住宿服务/餐饮服务
 - `metro_station` —— 高德地铁站（`数据库操作/fetch_metro.py`）
 - `poi_data` 的最近地铁字段由 `数据库操作/update_poi_metro.py` 关联补齐
@@ -30,7 +30,7 @@
 
 ### 方式一：一键启动（推荐）
 
-双击运行 `Agent/启动系统.bat`，自动依次打开 4 个 MCP 服务器、4 个 A2A 代理服务器，最后启动 Web 前端（http://localhost:8501）。
+双击运行 `Agent/start.bat`，自动依次打开 4 个 MCP 服务器、4 个 A2A 代理服务器，最后启动 Web 前端（http://localhost:8501）。
 
 ### 方式二：手动逐个启动（按依赖顺序）
 

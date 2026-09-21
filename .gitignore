@@ -103,7 +103,7 @@ Agent/legal_qa/mysql_qa/data/backup/
 # 链路对比实验结果
 Agent/legal_qa/results/
 # 评估回归门运行报告（可随时重新生成；基线 CSV 正常入库）
-实验脚本/results/eval_report_*.json
+scripts/results/eval_report_*.json
 
 docs/INTERVIEW_QA.md
 

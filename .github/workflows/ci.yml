@@ -31,10 +31,10 @@ jobs:
         run: |
           ruff check .
 
-      - name: 编译检查（全部 Python 源码，含实验脚本）
+      - name: 编译检查（全部 Python 源码，含scripts）
         run: |
           python -m compileall -q -x '(^|/)__pycache__|models' Agent
-          python -m compileall -q tests 实验脚本
+          python -m compileall -q tests scripts
 
       - name: 运行单元测试（纯逻辑用例，不依赖 MySQL/Redis/Milvus）
         run: |

@@ -49,7 +49,7 @@
 
 **背景**：RAG 的检索质量直接决定回答质量，单一检索策略有缺陷。
 
-**候选方案**（均有消融实验数据支撑，见 `实验脚本/run_rag_ablation.py`）：
+**候选方案**（均有消融实验数据支撑，见 `scripts/run_rag_ablation.py`）：
 
 | 策略 | 特点 | 短板 |
 |------|------|------|
@@ -90,7 +90,7 @@
 | **BERT 微调（选定）** | <10ms | 几乎为零（本地推理） | 确定性强 |
 | 纯关键词规则 | 极快 | 零 | 覆盖不全，难以组合 |
 
-**决策理由**：RAG 内部分流是高频、延迟敏感、成本敏感场景，BERT 本地推理完全满足（微调 800 条样本，评估准确率 98.28%，见 `实验脚本/run_intent_evaluation.py` 与 `实验脚本/results/intent_evaluation_report.txt`）。同时用**租房常识关键词兜底**：命中关键词强制走 RAG 保引用，防止分类器误判导致高频常识问题不带法律依据。
+**决策理由**：RAG 内部分流是高频、延迟敏感、成本敏感场景，BERT 本地推理完全满足（微调 800 条样本，评估准确率 98.28%，见 `scripts/run_intent_evaluation.py` 与 `scripts/results/intent_evaluation_report.txt`）。同时用**租房常识关键词兜底**：命中关键词强制走 RAG 保引用，防止分类器误判导致高频常识问题不带法律依据。
 
 **代价**：类别体系变更需重新标注训练；训练数据需要人工标注（800 条）。
 
@@ -150,7 +150,7 @@
 
 **背景**：开源项目"clone 下来能不能跑"是决定 star 数的关键因素。
 
-**决策**：`docker-compose.yml` 一键启动 MySQL + Redis + Milvus；`seed_data.sql` 提供演示种子数据；`start.sh` / `启动系统.bat` 一键拉起全部服务；`config_local/` 模板 + 环境变量优先的读取策略解决密钥配置。
+**决策**：`docker-compose.yml` 一键启动 MySQL + Redis + Milvus；`seed_data.sql` 提供演示种子数据；`start.sh` / `start.bat` 一键拉起全部服务；`config_local/` 模板 + 环境变量优先的读取策略解决密钥配置。
 
 **代价**：维护多一份种子数据；配置模板需与真实环境保持一致。
 

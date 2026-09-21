@@ -9,7 +9,7 @@
   - 输出: 混淆矩阵、分类报告、误分类案例分析
 
 使用方法：
-  cd 实验脚本
+  cd scripts
   python run_intent_evaluation.py
 
 输出：

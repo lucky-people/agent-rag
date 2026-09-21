@@ -346,7 +346,7 @@ if __name__ == '__main__':
     query_classify = QueryClassifier()
 
     # 2. 训练模型（使用项目内的训练数据）
-    data_file = os.path.join(REAL_PROJECT_ROOT, '实验脚本', 'data', 'intent_train_data.jsonl')
+    data_file = os.path.join(REAL_PROJECT_ROOT, 'scripts', 'data', 'intent_train_data.jsonl')
     query_classify.train_model(data_file)
 
     # 3. 示例预测: 对查询进行分类

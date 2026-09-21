@@ -125,7 +125,7 @@ class MetricsCollector:
         """读取最新 eval_report_*.json, 供看板质量区展示"""
         files = sorted(glob.glob(os.path.join(results_dir, "eval_report_*.json")))
         if not files:
-            return {"source": "无评估报告", "note": "运行 python 实验脚本/eval_gate.py 生成"}
+            return {"source": "无评估报告", "note": "运行 python scripts/eval_gate.py 生成"}
         path = files[-1]
         try:
             with open(path, encoding="utf-8") as f:

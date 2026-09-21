@@ -7,8 +7,12 @@
 
 ## [Unreleased]
 
+### 规范化
+- 目录与文件重命名为英文（保留 git 历史）：`实验脚本/`→`scripts/`、`数据集/`→`datasets/`、`Agent/数据库操作/`→`Agent/data_collection/`、`新版网页.html`→`Agent/static/index.html`、`启动系统.bat`→`Agent/start.bat`、`数据与运行说明.md`→`Agent/RUN_NOTES.md`；清理根目录本地残留文件
+- `scripts/` 历史脚本通过 ruff 全量检查（修复 E702/F401/F841 共 19 处）
+
 ### 新增
-- **评估回归门（Evaluation Gate）**：`实验脚本/eval_gate.py` 一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值 exit 1 FAIL；配套 `.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发）与 `docs/EVAL_GATE.md`
+- **评估回归门（Evaluation Gate）**：`scripts/eval_gate.py` 一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值 exit 1 FAIL；配套 `.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发）与 `docs/EVAL_GATE.md`
 - **管理员数据看板**：`/admin/dashboard` 四层指标可视化（技术层 QPS/P50/P99、业务层路由/意图分布、缓存层命中率、质量层评估报告、成本层 LLM 统计），管理员/用户双端权限隔离（Flask Session 鉴权，凭据入 `config_local/`）
 - **模型路由（Intent → Model）**：闲聊走 qwen-turbo（成本/延迟优先），法律/合同走 qwen-plus（质量优先）；LLM 调用次数与估算成本进入看板成本区
 - CI/CD 自动化质量门（GitHub Actions：Python 3.10 / 3.11 矩阵，ruff 静态检查 + 编译检查 + 单元测试 + SQL 只读白名单安全回归）
@@ -53,7 +57,7 @@
 ### 可复现性
 - `docker-compose.yml`：MySQL / Redis / Milvus 一键启动
 - `Agent/sql/seed_data.sql`：演示种子数据（52 房源 / 15 地铁站 / 15 POI / 7 天天气）
-- `Agent/start.sh`：Linux / macOS 启动脚本；`启动系统.bat` 支持 `ZHIZU_PYTHON` 环境变量
+- `Agent/start.sh`：Linux / macOS 启动脚本；`start.bat` 支持 `ZHIZU_PYTHON` 环境变量
 - `requirements.txt`（CPU）与 `requirements-gpu.txt`（CUDA）拆分
 - 实验数据集（data/）与结果图（results/）纳入版本管理
 

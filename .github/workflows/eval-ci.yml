@@ -4,7 +4,7 @@
 # 触发: 手动 (workflow_dispatch) + 每周一凌晨 (schedule)
 # 依赖: Docker service containers (MySQL/Redis/Milvus) + DASHSCOPE_API_KEY secret
 # 注意: Gitee 不执行 GitHub Actions; 本 workflow 在镜像到 GitHub 后自动生效,
-#       本地/服务器可用 `python 实验脚本/eval_gate.py` 一键执行 (见 docs/EVAL_GATE.md)
+#       本地/服务器可用 `python scripts/eval_gate.py` 一键执行 (见 docs/EVAL_GATE.md)
 name: Evaluation Gate
 
 on:
@@ -84,11 +84,11 @@ jobs:
 
       - name: 跑评估回归门 (确定性审计 + 基线对比)
         run: |
-          python 实验脚本/eval_gate.py --rounds 1
+          python scripts/eval_gate.py --rounds 1
 
       - name: 上传评估报告
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eval-reports
-          path: 实验脚本/results/eval_report_*.json
+          path: scripts/results/eval_report_*.json

@@ -13,21 +13,21 @@ RAG 系统的质量退化是**静默**的：代码编译通过、单测全绿，
 
 ```bash
 # 前提: Docker 中间件已启动 (docker compose up -d), config_local/keys.py 已配好
-python 实验脚本/eval_gate.py                    # 8题×3策略×1轮, 确定性审计
-python 实验脚本/eval_gate.py --rounds 3         # 3 轮取均值 (复现 v3 口径)
-python 实验脚本/eval_gate.py --ragas            # 额外跑 RAGAS 打分 (慢, 需 API)
-python 实验脚本/eval_gate.py --questions Q1,Q6  # 只跑子集 (快速自检)
-python 实验脚本/eval_gate.py --tol 0.08         # 放宽容差
-python 实验脚本/eval_gate.py --save-baseline    # 通过后提升黄金基线 (需 --rounds 3)
+python scripts/eval_gate.py                    # 8题×3策略×1轮, 确定性审计
+python scripts/eval_gate.py --rounds 3         # 3 轮取均值 (复现 v3 口径)
+python scripts/eval_gate.py --ragas            # 额外跑 RAGAS 打分 (慢, 需 API)
+python scripts/eval_gate.py --questions Q1,Q6  # 只跑子集 (快速自检)
+python scripts/eval_gate.py --tol 0.08         # 放宽容差
+python scripts/eval_gate.py --save-baseline    # 通过后提升黄金基线 (需 --rounds 3)
 ```
 
 **输出**：
 - 控制台：逐题审计明细 + 基线对比表 + `✅ PASS` / `❌ FAIL`
-- 报告：`实验脚本/results/eval_report_<时间戳>.json`（本轮指标 + 基线 + 失败项，可上传/审计）
+- 报告：`scripts/results/eval_report_<时间戳>.json`（本轮指标 + 基线 + 失败项，可上传/审计）
 
 **判定规则**：任一策略的「引用真实率」或「RAGAS 忠实度」低于 **基线 - 容差(默认 0.05)** → FAIL。
 
-**基线来源**：`实验脚本/results/hallucination_audit_v5.csv`（引用真实率）+ `ragas_scores_v3.csv`
+**基线来源**：`scripts/results/hallucination_audit_v5.csv`（引用真实率）+ `ragas_scores_v3.csv`
 （RAGAS 忠实度）——即条款级重排修复后的**黄金基线**（D 0.913 / 0.595）。`--save-baseline`
 用更高分结果提升基线，支持"基线随项目演进"。
 
@@ -52,5 +52,5 @@ python 实验脚本/eval_gate.py --save-baseline    # 通过后提升黄金基�
 ## 扩展
 
 - **全量 RAGAS 回归**：CI 里 `--ragas` 全量约 40 分钟 + API 费用，建议作为每周任务；push 触发只跑确定性审计（快、零 API 额外费用）。
-- **数据集扩展**：`QUESTIONS` 8 题可从 `实验脚本/data/rag_test_questions.json` 扩充，基线同步提升。
+- **数据集扩展**：`QUESTIONS` 8 题可从 `scripts/data/rag_test_questions.json` 扩充，基线同步提升。
 - **阈值治理**：`--tol` 是硬门槛；更细可对"每策略每指标"分别配阈值（改 `main()` 的对比段）。

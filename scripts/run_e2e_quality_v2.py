@@ -18,7 +18,6 @@
 """
 import os
 import sys
-import json
 import time
 import csv
 import warnings
@@ -29,7 +28,7 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # 优先 GPU
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-RESULTS = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS = os.path.join(PROJECT_ROOT, "scripts", "results")
 os.makedirs(RESULTS, exist_ok=True)
 
 QUESTIONS = [

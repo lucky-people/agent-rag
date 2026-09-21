@@ -4,7 +4,7 @@ import os
 import csv
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 
 import matplotlib
 matplotlib.use("Agg")
@@ -69,7 +69,8 @@ for ax, (mk, title) in zip(axes, [("f", "RAGAS 忠实度"), ("r", "RAGAS 相关�
         ax.text(bar.get_x() + bar.get_width() / 2, v + 0.01, f"{v:.3f}", ha="center",
                 fontsize=11, fontweight="bold")
     ax.set_title(title, fontsize=12)
-    ax.set_xticks(list(x)); ax.set_xticklabels(STRATS, fontsize=10)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(STRATS, fontsize=10)
     ax.set_ylim(0.35 if mk == "f" else 0.6, 1.08)
 fig.suptitle("RAGAS 交叉验证 + 确定性引用审计（条款级重排修复后, 8题×3策略×3次生成均值）", fontsize=13, y=1.02)
 fig.tight_layout()

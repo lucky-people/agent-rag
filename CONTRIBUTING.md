@@ -82,5 +82,5 @@ docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
 ## 提问与交流
 
 - Bug / 功能建议：提交 [Issue](https://gitee.com/gao-shuaizhou/zhizu-advisor/issues)
-- 使用问题：先看 [README](README.md) 与 [数据与运行说明](Agent/数据与运行说明.md)
+- 使用问题：先看 [README](README.md) 与 [数据与运行说明](Agent/RUN_NOTES.md)
 - 演示视频：B 站 [BV1queJ6qE7f](https://www.bilibili.com/video/BV1queJ6qE7f)

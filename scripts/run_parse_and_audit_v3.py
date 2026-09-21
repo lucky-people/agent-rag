@@ -8,7 +8,7 @@ import csv
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 
 # 1. 读原始样本（含 contexts）
 with open(os.path.join(RESULTS_DIR, "ragas_raw_samples_v3.json"), encoding="utf-8") as f:
@@ -116,7 +116,9 @@ for (qid, strat), rounds in sorted(by_key.items()):
                 pass
             else:
                 unsup.add(no)
-        union_cited |= cited; union_sup |= sup; union_unsup |= unsup
+        union_cited |= cited
+        union_sup |= sup
+        union_unsup |= unsup
         if cited:
             round_rates.append(1 - len(unsup) / len(cited))
     truth = sum(round_rates) / len(round_rates) if round_rates else None

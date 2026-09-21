@@ -24,7 +24,6 @@ import os
 import sys
 import time
 import csv
-import json
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -32,7 +31,7 @@ warnings.filterwarnings("ignore")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 TEST_QUESTIONS = [
@@ -125,8 +124,6 @@ def main():
         # 解析轨迹
         triggered = False          # 是否触发反思（有 supported=false）
         corrected = False          # 纠错成功（最终轮 supported=true）
-        first_answer = ans0        # 首轮答案（朴素路径）
-        final_answer = ans1        # 最终答案
         first_supported = None
         for rnd_i, r in enumerate(rounds):
             sup = r.get("supported")

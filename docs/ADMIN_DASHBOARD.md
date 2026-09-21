@@ -7,7 +7,7 @@
 
 | 端 | 入口 | 可见内容 |
 | --- | --- | --- |
-| 用户端 | `/`（新版网页.html） | 聊天 + 意图路由 + 协作链路追踪（不变） |
+| 用户端 | `/`（static/index.html） | 聊天 + 意图路由 + 协作链路追踪（不变） |
 | 管理员端 | `/admin/dashboard` | 四层运行指标（下述） |
 
 - 访问 `/admin/*`、`/api/admin/metrics` 未登录 → 302 跳登录页 / 401
@@ -33,7 +33,7 @@ FLASK_SECRET_KEY = "random-64-hex"   # 不配则每次重启随机(旧会话失�
 | 技术层 | QPS / 平均耗时 / P50 / P99 / 错误数 | `process()` + 流式 `generate()` 出口 |
 | 业务层 | 路由分布（chat/legal/agent/error）、意图分布（6类） | 同上，`intent_dist` 逐意图计数 |
 | 缓存层 | RAG 答案缓存命中率（hit / hit_rate） | `legal_qa/new_main.py` 缓存命中分支 |
-| 质量层 | 引用真实率（三策略）/ PASS-FAIL | 自动读取最新 `实验脚本/results/eval_report_*.json` |
+| 质量层 | 引用真实率（三策略）/ PASS-FAIL | 自动读取最新 `scripts/results/eval_report_*.json` |
 | 成本层 | LLM 调用次数 / 估算成本（元） | 模型路由分支 `record_llm`（token 按字符估算） |
 
 - 指标为**进程内存**累计（重启清零），适合演示/单实例；多实例可扩展 Redis 聚合（见"扩展"）。
@@ -57,8 +57,8 @@ python Agent/web_server.py        # http://localhost:8501
 
 ## 与评估回归门联动
 
-质量层数据来自 `实验脚本/results/eval_report_*.json`（由 `eval_gate.py` 生成）。
-跑一次 `python 实验脚本/eval_gate.py` 后，看板质量区即展示最新三策略引用真实率与 PASS/FAIL。
+质量层数据来自 `scripts/results/eval_report_*.json`（由 `eval_gate.py` 生成）。
+跑一次 `python scripts/eval_gate.py` 后，看板质量区即展示最新三策略引用真实率与 PASS/FAIL。
 
 ## 扩展方向（面试可讲）
 

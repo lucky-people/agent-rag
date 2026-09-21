@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RAG检索策略消融实验脚本
+RAG检索策略消融scripts
 ========================
 对比4种检索策略在租房法律问答场景下的效果：
   策略A: 纯BM25（MySQL常见问题库关键词检索）
@@ -15,7 +15,7 @@ RAG检索策略消融实验脚本
   - 平均检索耗时(ms)
 
 使用方法：
-  cd 实验脚本
+  cd scripts
   python run_rag_ablation.py
 
 输出：

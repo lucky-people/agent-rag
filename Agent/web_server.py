@@ -3,7 +3,7 @@
 """
 文件名: web_server.py
 描述: 智租顾问 统一智能助手后端（A2A智能体 + RAG法律咨询 双路线）。
-      - /          提供新版网页.html 静态页面
+      - /          提供static/index.html 静态页面
       - /api/chat  接收 {session_id, message}，意图识别后自动路由：
           * house/poi/metro/recommend → A2A 智能体网络
           * legal → RAG 法律问答系统（懒加载）
@@ -558,13 +558,13 @@ def admin_dashboard():
 @app.route("/api/admin/metrics")
 @login_required
 def admin_metrics_api():
-    quality = metrics.quality_from_reports(os.path.join(PROJECT_ROOT, "实验脚本", "results"))
+    quality = metrics.quality_from_reports(os.path.join(PROJECT_ROOT, "scripts", "results"))
     return jsonify(metrics.snapshot(quality=quality))
 
 
 @app.route("/")
 def index():
-    return send_file(os.path.join(BASE_DIR, "新版网页.html"))
+    return send_file(os.path.join(BASE_DIR, "static/index.html"))
 
 
 @app.route("/api/chat", methods=["POST"])

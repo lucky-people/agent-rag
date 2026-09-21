@@ -3,10 +3,9 @@
 生成评估对比图（补充）:
   1. 三链路响应时长对比 (MySQL / Redis / RAG) — 对数刻度突出 3 个数量级差距
   2. Agentic RAG vs 朴素 RAG 端到端对比 (耗时/答案长度/反思轮数)
-输出: 实验脚本/results/chain_latency_chart.png, agentic_vs_naive_chart.png
+输出: scripts/results/chain_latency_chart.png, agentic_vs_naive_chart.png
 """
 import os
-import sys
 import csv
 import matplotlib
 matplotlib.use("Agg")

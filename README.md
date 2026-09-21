@@ -129,7 +129,7 @@ SSE 返回：token 流 + thinking + references + options + done（含完整 trac
 
 ## 📊 量化评估
 
-> 全部数据来自**本仓库实际运行**的评估脚本（`实验脚本/`），检索类实验在 **RTX 4060 GPU** 实测，答案质量由 **LLM 独立评判**（0-5 分，评判可见检索上下文），覆盖路由 → 检索 → 生成 → 缓存全链路。
+> 全部数据来自**本仓库实际运行**的评估脚本（`scripts/`），检索类实验在 **RTX 4060 GPU** 实测，答案质量由 **LLM 独立评判**（0-5 分，评判可见检索上下文），覆盖路由 → 检索 → 生成 → 缓存全链路。
 
 ### 实验一：BERT 查询分类评估（RAG 内部分流）
 
@@ -144,11 +144,11 @@ SSE 返回：token 流 + thinking + references + options + done（含完整 trac
 
 > BERT 分类器与规则关键词**双保险**——语义判别 + 规则兜底，专业咨询漏报率压到 0。
 
-<img src="实验脚本/results/intent_confusion_matrix.png" width="620"/>
+<img src="scripts/results/intent_confusion_matrix.png" width="620"/>
 
 ### 实验二：混合检索 + Rerank 选型价值评估（三层证据）★核心
 
-> `实验脚本/run_e2e_quality_v2.py`，8 道代表性题（含困难样本），每层由 LLM 独立评判（0-5）。
+> `scripts/run_e2e_quality_v2.py`，8 道代表性题（含困难样本），每层由 LLM 独立评判（0-5）。
 
 **证据 1｜检索质量直接评判**（LLM 直接评 Top-5 文档列表，不经过生成）：
 
@@ -169,7 +169,7 @@ SSE 返回：token 流 + thinking + references + options + done（含完整 trac
 
 > **评估方法论演进（v1 → v2）**：v1 评判 LLM 看不到检索上下文，数据被生成噪声污染（曾出现 C>D 假象）；修复为"评判可见上下文 + 检索质量直接评判 + 生产配置对比"后，Rerank 价值在三层稳定显现（+45% / +55% / 引用最高）。核心洞察：**评估指标必须与待验证的技术假设对齐**——验证 Rerank 要看排序质量与进入 LLM 的上下文质量，而不是笼统的召回率。
 
-<img src="实验脚本/results/e2e_v2_chart.png" width="860"/>
+<img src="scripts/results/e2e_v2_chart.png" width="860"/>
 
 ### 实验三：RAG 检索策略 GPU 实测耗时
 
@@ -183,7 +183,7 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 | D. 混合 + Reranker（全量重排） | 30039.2 ms |
 | **D' 生产路径（CANDIDATE_M=2 精排）** | **~1816 ms** |
 
-<img src="实验脚本/results/ablation_gpu_chart.png" width="680"/>
+<img src="scripts/results/ablation_gpu_chart.png" width="680"/>
 
 > 消融为"策略公平对比"对全部候选父文档逐一交叉编码，故 D 全量重排被放大；**生产代码只精排 Top-2，GPU 实测 1.8s/题完全可用**——评测要严格，工程要务实。
 
@@ -195,7 +195,7 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 | B. Redis 缓存 | 命中 `rag_answer:*` → 秒回 | **2.4 ms** | ≈3700x |
 | C. RAG 全链路 | BM25 + 向量 + Rerank + LLM 生成 | 8908.1 ms | 1x |
 
-<img src="实验脚本/results/chain_latency_chart.png" width="820"/>
+<img src="scripts/results/chain_latency_chart.png" width="820"/>
 
 > 多级缓存把高频问题延迟从秒级压到毫秒级：只有真正需要生成的新问题才触发昂贵 RAG——生产系统降本提速的关键设计。
 
@@ -219,7 +219,7 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 | Q3 提前退租责任 | **MySQL FAQ 直答（3ms）** | 未进 RAG（BM25 命中阈值） | 多级路由免 RAG 成本 |
 | Q5 装修抵租（困难） | RAG | 首轮 `supported=false`（证据仅涉登记备案） | 改写后命中裁判规则，**完整/引用 4→5** |
 
-<img src="实验脚本/results/reflection_cases_chart.png" width="880"/>
+<img src="scripts/results/reflection_cases_chart.png" width="880"/>
 
 > **反思机制不是摆设**：2/5 走 RAG 的题被自检拦截且全部纠错成功——Self-RAG 不是"每次都反思"，而是**只在证据不足时出手**（平均 1.3 轮收敛）。代价约 10.4x（CPU 推理），生产采用混合策略：普通问题走朴素 RAG，自检不通过才升级反思重检，把 Agentic 代价花在刀刃上。
 
@@ -252,8 +252,8 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 | RAGAS 相关性 | 0.875 | 0.958 | **0.958** |
 | 引用真实率（确定性审计） | 0.867 | 0.920 | **0.913** |
 
-<img src="实验脚本/results/ragas_fix_before_after.png" width="860"/>
-<img src="实验脚本/results/ragas_cross_validation_chart_v2.png" width="860"/>
+<img src="scripts/results/ragas_fix_before_after.png" width="860"/>
+<img src="scripts/results/ragas_cross_validation_chart_v2.png" width="860"/>
 
 > **这是评估体系闭环的证明**：v2 的 LLM-as-Judge 给 D 打 4.00 分，RAGAS 交叉验证发现该结论被"表面相关"文档误导；修复后 D 从全面落后转为与 C 持平、相关性并列第一。**第三方基准的价值不是确认自评，而是发现自评的盲区**——`rerank_docs`（条款级重排）已同步进生产 `hybrid_search_with_rerank`。剩余差距来自个别轮次 LLM 生成时引用未标注条款（生成噪声边界，非检索问题）。
 
@@ -261,18 +261,18 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 
 - ✅ **46 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析、指标采集）
 - ✅ **e2e 冒烟测试**（`tests/e2e_smoke.py`）+ CI 集成 ruff 静态检查
-- ✅ **评估回归门**（`实验脚本/eval_gate.py`）：一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值即 exit 1 FAIL，可本地/CI 双跑（详见 `docs/EVAL_GATE.md`）
+- ✅ **评估回归门**（`scripts/eval_gate.py`）：一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值即 exit 1 FAIL，可本地/CI 双跑（详见 `docs/EVAL_GATE.md`）
 - ✅ **管理员数据看板**（`/admin/dashboard`）：四层指标可视化，管理员/用户双端权限隔离（详见 `docs/ADMIN_DASHBOARD.md`）
 - ✅ **模型路由**（Intent → Model）：闲聊走 qwen-turbo（成本/延迟优先），法律/合同走 qwen-plus（质量优先），LLM 调用次数与成本进入看板
 
 ```bash
 python -m pytest tests -q                     # 单元测试
-python 实验脚本/run_intent_evaluation.py      # 实验一：意图分类评估
-python 实验脚本/run_e2e_quality_v2.py         # 实验二：Rerank 选型价值（三层证据）
-python 实验脚本/run_reflection_cases.py       # 实验五②：反思纠错案例
-python 实验脚本/run_agentic_vs_naive.py       # 实验五①：Agentic vs 朴素
-python 实验脚本/run_ragas_audit_v3.py       # 实验六：RAGAS 交叉验证 + 幻觉审计
-python 实验脚本/eval_gate.py                  # 评估回归门（8题×3策略，基线对比 PASS/FAIL）
+python scripts/run_intent_evaluation.py      # 实验一：意图分类评估
+python scripts/run_e2e_quality_v2.py         # 实验二：Rerank 选型价值（三层证据）
+python scripts/run_reflection_cases.py       # 实验五②：反思纠错案例
+python scripts/run_agentic_vs_naive.py       # 实验五①：Agentic vs 朴素
+python scripts/run_ragas_audit_v3.py       # 实验六：RAGAS 交叉验证 + 幻觉审计
+python scripts/eval_gate.py                  # 评估回归门（8题×3策略，基线对比 PASS/FAIL）
 python Agent/web_server.py                    # 启动 Web（用户端 + 管理员端看板）
 ```
 
@@ -286,15 +286,15 @@ python Agent/web_server.py                    # 启动 Web（用户端 + 管理�
 
 **问题**：RAG 质量退化是静默的——代码编译通过、单测全绿，但检索重排一改、提示词一动，引用真实率可能从 0.913 悄悄掉到 0.80，没有任何报错。
 
-**方案**：`实验脚本/eval_gate.py` 把评估体系（实验六）固化为一条命令的质量门：
+**方案**：`scripts/eval_gate.py` 把评估体系（实验六）固化为一条命令的质量门：
 
 - 固定评估集（8题×3策略×N轮）→ 确定性条款命中审计（幻觉=未标注的编造引用）→ 可选 RAGAS 打分
 - 与黄金基线（`results/hallucination_audit_v5.csv` + `ragas_scores_v3.csv`）对比，任一策略引用真实率/RAGAS忠实度低于 **基线-容差(0.05)** 即 exit 1 FAIL
 - CI 集成：`.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发；Docker 中间件 + 模型自动下载 + 报告上传）
 
 ```bash
-python 实验脚本/eval_gate.py            # 本地一键回归（需中间件在线）
-python 实验脚本/eval_gate.py --ragas    # 额外跑 RAGAS（慢）
+python scripts/eval_gate.py            # 本地一键回归（需中间件在线）
+python scripts/eval_gate.py --ragas    # 额外跑 RAGAS（慢）
 ```
 
 > 效果：**"评估即 CI"**——质量回退在合并前被拦截，而非上线后才发现。
@@ -339,12 +339,12 @@ Agent/                          # 主系统代码
 ├── a2a_server/                 # 多智能体协作层：Text2SQL 基类 + house/metro/poi/recommend/legal 子智能体
 ├── mcp_server/                 # 工具执行层（MCP：统一封装 SQL + 只读白名单）
 ├── legal_qa/                   # 法律问答子系统（Agentic RAG：MySQL + Redis + BM25 + Milvus + 反思循环）
-├── 数据库操作/                  # 数据采集（房天下爬虫 / 高德 POI / 地铁）
+├── data_collection/                  # 数据采集（房天下爬虫 / 高德 POI / 地铁）
 ├── sql/                        # 表结构 + 演示种子数据（51 房源 / 14 地铁站 / 14 POI）
 ├── ingest_rental_laws.py       # 法律条文向量化入库（Milvus）
-└── 启动系统.bat / start.sh     # 一键启动
+└── start.bat / start.sh     # 一键启动
 docs/                           # 架构图 + 截图 + TECHNICAL_DECISIONS.md（选型决策全文）
-实验脚本/                        # 全部评估实验（脚本 + results 图/CSV）
+scripts/                        # 全部评估实验（脚本 + results 图/CSV）
 tests/                          # 41 个单元测试 + e2e 冒烟
 docker-compose.yml              # MySQL + Redis + Milvus 一键启动
 config_local/                   # 本地密钥（已 gitignore）
@@ -364,7 +364,7 @@ python Agent/legal_qa/mysql_qa/replace_jpkb_data.py   # 法律 FAQ 入库（BM25
 ```
 2. **配置密钥**：复制 `Agent/legal_qa/config.ini.example` → `config_local/config.ini`，创建 `config_local/keys.py` 填写 DashScope / MySQL / Redis 密钥（已 gitignore）
 3. **安装依赖**：`conda create -n lang_env python=3.10 && pip install -r requirements.txt`
-4. **一键启动**：Windows 双击 `Agent/启动系统.bat`（自动启动 4 MCP → 5 A2A → Web）；Linux/macOS 执行 `./Agent/start.sh`，打开 http://localhost:8501
+4. **一键启动**：Windows 双击 `Agent/start.bat`（自动启动 4 MCP → 5 A2A → Web）；Linux/macOS 执行 `./Agent/start.sh`，打开 http://localhost:8501
 
 > 法律问答需先构建向量库（可选，不影响房源/地铁/POI/闲聊）：`python Agent/ingest_rental_laws.py`、`python Agent/ingest_rental_tips.py`
 

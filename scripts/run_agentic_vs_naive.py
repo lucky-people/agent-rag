@@ -8,7 +8,7 @@ Agentic RAG vs 朴素 RAG 端到端对比评估
 对比维度: 端到端耗时 / 答案长度 / 引用条数 / 反思轮数 / 回答成功率
 
 注意: 会真实调用 LLM API (qwen-plus)，产生少量费用。
-输出: 实验脚本/results/agentic_vs_naive.csv + summary
+输出: scripts/results/agentic_vs_naive.csv + summary
 """
 import os
 import sys
@@ -25,7 +25,7 @@ os.environ.setdefault("PYTORCH_NO_CUDA", "1")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # 代表性测试问题（含消融实验中的高难度/低命中问题，体现反思价值）

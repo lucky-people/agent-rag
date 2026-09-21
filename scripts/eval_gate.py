@@ -6,11 +6,11 @@
 → 与基线快照对比 → 指标回退超阈值即 FAIL (exit 1), 用于本地/CI 质量门。
 
 用法:
-  python 实验脚本/eval_gate.py                  # 8题×3策略×1轮, 确定性审计
-  python 实验脚本/eval_gate.py --rounds 3       # 3 轮生成取均值(复现 v3 口径)
-  python 实验脚本/eval_gate.py --ragas          # 额外跑 RAGAS 打分(慢, 需 API)
-  python 实验脚本/eval_gate.py --questions Q1,Q6 --tol 0.08
-  python 实验脚本/eval_gate.py --baseline results  # 指定基线目录
+  python scripts/eval_gate.py                  # 8题×3策略×1轮, 确定性审计
+  python scripts/eval_gate.py --rounds 3       # 3 轮生成取均值(复现 v3 口径)
+  python scripts/eval_gate.py --ragas          # 额外跑 RAGAS 打分(慢, 需 API)
+  python scripts/eval_gate.py --questions Q1,Q6 --tol 0.08
+  python scripts/eval_gate.py --baseline results  # 指定基线目录
 
 基线: 默认读取 results/hallucination_audit_v5.csv + ragas_scores_v3.csv
      (修复后最终版, 即"黄金基线"); 每次跑出的新结果可 `--save-baseline` 提升基线。
@@ -18,7 +18,6 @@
 """
 import os
 import sys
-import io
 import csv
 import json
 import time
@@ -196,9 +195,9 @@ def main():
     ap.add_argument("--ragas", action="store_true", help="额外跑 RAGAS 打分(慢)")
     ap.add_argument("--tol", type=float, default=0.05, help="指标回退容差, 默认0.05")
     ap.add_argument("--questions", default="", help="子集: Q1,Q6 (默认全部8题)")
-    ap.add_argument("--baseline", default=os.path.join(PROJECT_ROOT, "实验脚本", "results"), help="基线目录")
+    ap.add_argument("--baseline", default=os.path.join(PROJECT_ROOT, "scripts", "results"), help="基线目录")
     ap.add_argument("--save-baseline", action="store_true", help="用本次结果提升基线CSV")
-    ap.add_argument("--out", default=os.path.join(PROJECT_ROOT, "实验脚本", "results"), help="输出目录")
+    ap.add_argument("--out", default=os.path.join(PROJECT_ROOT, "scripts", "results"), help="输出目录")
     args = ap.parse_args()
 
     qs = QUESTIONS
@@ -226,7 +225,7 @@ def main():
                     model=llm_model, messages=[{"role": "user", "content": prompt}],
                     temperature=temperature)
                 return resp.choices[0].message.content.strip()
-            except Exception as e:
+            except Exception:
                 if attempt < retries - 1:
                     time.sleep(2)
                 else:
@@ -258,7 +257,8 @@ def main():
                 time.sleep(0.1)
             print(f"  [{strat}] {qid} 检索{len(docs)}篇({el:.0f}ms) x{args.rounds}轮")
     if not expanded:
-        print("无样本, 退出"); sys.exit(2)
+        print("无样本, 退出")
+        sys.exit(2)
 
     # 阶段B: 确定性审计
     print("\n[阶段B] 确定性条款命中审计 ...")
@@ -389,7 +389,8 @@ def main():
                     row["truth_rate"] = str(round(cur_truth[row["strategy"]], 4))
             with open(p1, "w", encoding="utf-8-sig", newline="") as f:
                 w = csv.DictWriter(f, fieldnames=rows[0].keys())
-                w.writeheader(); w.writerows(rows)
+                w.writeheader()
+                w.writerows(rows)
             print(f"✅ 基线已更新: {p1}")
         p2 = os.path.join(args.baseline, "ragas_scores_v3.csv")
         if args.ragas and os.path.exists(p2):
@@ -400,7 +401,8 @@ def main():
                     row["faithfulness_mean"] = str(ragas_result[row["strategy"]]["faithfulness"])
             with open(p2, "w", encoding="utf-8-sig", newline="") as f:
                 w = csv.DictWriter(f, fieldnames=rows[0].keys())
-                w.writeheader(); w.writerows(rows)
+                w.writeheader()
+                w.writerows(rows)
             print(f"✅ RAGAS 基线已更新: {p2}")
 
     print(f"\n报告: {json_path}")

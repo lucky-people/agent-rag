@@ -5,13 +5,12 @@
 复用 ragas_v2_expanded.json, 纯本地计算
 """
 import os
-import sys
 import csv
 import json
 import re
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 LABELS = {"B_纯稠密": "B 纯稠密", "C_混合无Rerank": "C 混合检索", "D_混合+Rerank": "D 混合+Rerank"}
 HONEST_PATTERNS = ["未覆盖", "未提供", "未出现", "未列出", "上下文未", "无相关条文", "未包含"]
 

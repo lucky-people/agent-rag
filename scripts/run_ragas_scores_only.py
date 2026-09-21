@@ -5,13 +5,12 @@ faith 慢调用(timeout=180) + 4 路线程并行, 72 样本约 40-50 分钟
 import os
 import sys
 import json
-import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 
 from Agent.legal_qa.base.config import Config
 from Agent.legal_qa.rag_qa import VectorStore

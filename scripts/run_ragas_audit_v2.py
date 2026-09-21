@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
-RESULTS_DIR = os.path.join(PROJECT_ROOT, "实验脚本", "results")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "scripts", "results")
 GEN_ROUNDS = 3
 LABELS = {"B_纯稠密": "B 纯稠密", "C_混合无Rerank": "C 混合检索", "D_混合+Rerank": "D 混合+Rerank"}
 
@@ -107,7 +107,7 @@ def main():
                     temperature=temperature,
                 )
                 return resp.choices[0].message.content.strip()
-            except Exception as e:
+            except Exception:
                 if attempt < retries - 1:
                     time.sleep(3)
                 else:
