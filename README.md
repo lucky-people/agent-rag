@@ -259,8 +259,11 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 
 ### 工程指标
 
-- ✅ **41 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析等）
+- ✅ **46 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析、指标采集）
 - ✅ **e2e 冒烟测试**（`tests/e2e_smoke.py`）+ CI 集成 ruff 静态检查
+- ✅ **评估回归门**（`实验脚本/eval_gate.py`）：一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值即 exit 1 FAIL，可本地/CI 双跑（详见 `docs/EVAL_GATE.md`）
+- ✅ **管理员数据看板**（`/admin/dashboard`）：四层指标可视化，管理员/用户双端权限隔离（详见 `docs/ADMIN_DASHBOARD.md`）
+- ✅ **模型路由**（Intent → Model）：闲聊走 qwen-turbo（成本/延迟优先），法律/合同走 qwen-plus（质量优先），LLM 调用次数与成本进入看板
 
 ```bash
 python -m pytest tests -q                     # 单元测试
@@ -269,8 +272,62 @@ python 实验脚本/run_e2e_quality_v2.py         # 实验二：Rerank 选型价
 python 实验脚本/run_reflection_cases.py       # 实验五②：反思纠错案例
 python 实验脚本/run_agentic_vs_naive.py       # 实验五①：Agentic vs 朴素
 python 实验脚本/run_ragas_audit_v3.py       # 实验六：RAGAS 交叉验证 + 幻觉审计
-python Agent/legal_qa/mysql_qa/compare_rag_redis_mysql.py --warm && ...  # 实验四：三链路
+python 实验脚本/eval_gate.py                  # 评估回归门（8题×3策略，基线对比 PASS/FAIL）
+python Agent/web_server.py                    # 启动 Web（用户端 + 管理员端看板）
 ```
+
+---
+
+## 🛰️ 企业级工程化（持续质量保障 + 可观测性 + 成本治理）
+
+面向"能长期运行的 RAG 系统"的三项工程化能力——评估不再是论文里的实验，而是**持续化的质量门**；运行状态不再是黑盒，而是**可视化的指标看板**；模型调用不再是单一选择，而是**按意图的成本路由**。
+
+### ① 评估回归门（Evaluation Gate）
+
+**问题**：RAG 质量退化是静默的——代码编译通过、单测全绿，但检索重排一改、提示词一动，引用真实率可能从 0.913 悄悄掉到 0.80，没有任何报错。
+
+**方案**：`实验脚本/eval_gate.py` 把评估体系（实验六）固化为一条命令的质量门：
+
+- 固定评估集（8题×3策略×N轮）→ 确定性条款命中审计（幻觉=未标注的编造引用）→ 可选 RAGAS 打分
+- 与黄金基线（`results/hallucination_audit_v5.csv` + `ragas_scores_v3.csv`）对比，任一策略引用真实率/RAGAS忠实度低于 **基线-容差(0.05)** 即 exit 1 FAIL
+- CI 集成：`.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发；Docker 中间件 + 模型自动下载 + 报告上传）
+
+```bash
+python 实验脚本/eval_gate.py            # 本地一键回归（需中间件在线）
+python 实验脚本/eval_gate.py --ragas    # 额外跑 RAGAS（慢）
+```
+
+> 效果：**"评估即 CI"**——质量回退在合并前被拦截，而非上线后才发现。
+
+### ② 管理员数据看板（Observability Dashboard）
+
+**问题**：系统跑起来后"怎么样"是黑盒——QPS、耗时、缓存命中率、成本都没有直观数据。
+
+**方案**：`/admin/dashboard`（管理员登录可见，用户端不受影响）：
+
+- **技术层**：QPS / 平均耗时 / P50 / P99 / 错误数
+- **业务层**：路由分布（chat/legal/agent）、意图分布（6类）
+- **缓存层**：RAG 答案缓存命中率
+- **质量层**：评估回归门最新报告（三策略引用真实率 + PASS/FAIL）
+- **成本层**：LLM 调用次数 / 估算成本（模型路由启用后自动统计）
+
+```bash
+python Agent/web_server.py   # 打开 http://localhost:8501/admin/dashboard
+```
+
+### ③ 模型路由（Intent → Model）
+
+**问题**：所有意图都用 qwen-plus——闲聊这种低复杂度请求也在为"质量优先"买单。
+
+**方案**：基于两级意图路由（LLM 6类 + BERT 二分类）扩展模型选择：
+
+| 意图 | 模型 | 策略 |
+|------|------|------|
+| legal / 合同审查 | qwen-plus | 质量优先（法律答错代价高） |
+| chat / 闲聊 | qwen-turbo | 成本/延迟优先（便宜 60%+） |
+| house/poi/metro/recommend | A2A 子智能体 | 保持各自领域模型 |
+
+每次 LLM 调用记录 model/token/耗时/估算成本 → 看板成本区展示，**成本治理可量化**。
 
 ---
 

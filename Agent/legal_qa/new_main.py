@@ -267,6 +267,11 @@ class IntegratedQASystem:
         cache_key = "rag_answer:" + (query or "").strip()
         try:
             cached = self.redis_client.get_data(cache_key)
+            try:
+                from Agent.metrics import metrics
+                metrics.record_cache(hit=cached is not None)
+            except Exception:
+                pass
         except Exception as e:
             self.logger.error(f"读取RAG缓存异常: {e}")
             cached = None

@@ -55,6 +55,10 @@ class Config:
         self.model_name = os.getenv("DASHSCOPE_MODEL", "") or (
             getattr(_local_keys, 'DASHSCOPE_MODEL', '') if _local_keys else ""
         ) or "qwen-plus"
+        # 轻量模型 (qwen-turbo): 模型路由策略下, 闲聊等低复杂度意图走便宜低延迟模型
+        self.model_name_light = os.getenv("DASHSCOPE_MODEL_LIGHT", "") or (
+            getattr(_local_keys, 'DASHSCOPE_MODEL_LIGHT', '') if _local_keys else ""
+        ) or "qwen-turbo"
 
         # 数据库配置（密码从 config_local/keys.py 或环境变量读取）
         self.host = os.getenv("MYSQL_HOST", 'localhost')

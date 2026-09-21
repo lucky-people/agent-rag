@@ -23,7 +23,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import pytz
-from flask import Flask, request, jsonify, send_file, Response
+from flask import Flask, request, jsonify, send_file, Response, session, redirect, render_template_string
 from python_a2a import AgentNetwork, TextContent, Message, MessageRole, Task
 from langchain_openai import ChatOpenAI
 
@@ -33,9 +33,31 @@ from Agent.main_prompts import RentalAdvisorPrompts
 from Agent.utils.format import robust_json_loads, extract_agent_result
 from Agent.a2a_server.base_text2sql_server import extract_requested_limit
 from Agent import user_system
+from Agent.metrics import metrics
 
 conf = Config()
 app = Flask(__name__)
+# ===== 管理员端鉴权 =====
+# secret_key: 优先环境变量, 其次 config_local/keys.py, 兜底随机(重启失效, 仅开发用)
+import secrets as _secrets
+def _load_admin_secret():
+    try:
+        import importlib.util as _ilu
+        _p = os.path.join(PROJECT_ROOT, "config_local", "keys.py")
+        if os.path.exists(_p):
+            _spec = _ilu.spec_from_file_location("_local_keys", _p)
+            _m = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_m)
+            return (getattr(_m, "ADMIN_USERNAME", None), getattr(_m, "ADMIN_PASSWORD", None),
+                    getattr(_m, "FLASK_SECRET_KEY", None))
+    except Exception:
+        pass
+    return (None, None, None)
+_ADMIN_U, _ADMIN_P, _SECRET = _load_admin_secret()
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or _SECRET or _secrets.token_hex(16)
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME") or _ADMIN_U or "admin"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or _ADMIN_P or "admin123"
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sessions = {}           # session_id -> {network, llm, history, messages, last_access}
@@ -301,9 +323,19 @@ def get_session(session_id):
                 request_timeout=10,
                 max_retries=1
             )
+            # (模型路由) 轻量模型: 闲聊等低复杂度意图使用, 降低延迟与成本
+            llm_light = ChatOpenAI(
+                model=conf.model_name_light,
+                api_key=conf.api_key,
+                base_url=conf.base_url,
+                temperature=0.3,
+                request_timeout=10,
+                max_retries=1
+            )
             sessions[session_id] = {
                 "network": network,
                 "llm": llm,
+                "llm_light": llm_light,
                 "history": "",
                 "messages": [],
                 "last_access": time.time(),
@@ -382,6 +414,8 @@ def process(sess, prompt, session_id="default"):
                             f"第{r.get('round')}轮检索{r.get('docs')}篇(支持={r.get('supported')})" 
                             for r in _trace_info.get("rounds", [])
                         )
+                        metrics.record_agentic(reflected=any(
+                            not r.get("supported", True) for r in _trace_info.get("rounds", [])))
                         add_trace_step(trace, "AgenticRAG", "Agentic反思循环",
                                        input_data=query_str,
                                        output_data=f"检索词规划+自检: {_rounds_txt}",
@@ -395,11 +429,18 @@ def process(sess, prompt, session_id="default"):
                 continue
 
             # ===== 通用对话路线：直接调用大模型生成答案 =====
+            # (模型路由) 闲聊走轻量模型 qwen-turbo: 成本/延迟优先; 法律/合同走 qwen-plus: 质量优先
             if agent_name == "ChatLLM":
                 route = "chat"
                 chat_start = time.time()
                 chat_prompt = f"你是一个友好的智能助手，请用简洁自然的中文回答用户问题。\n用户问题：{query_str}"
-                chat_response = llm.invoke(chat_prompt).content.strip()
+                chat_response = sess["llm_light"].invoke(chat_prompt).content.strip()
+                # 成本观测: 按字符数估算 token (中文约0.7token/字, 标注为估算)
+                _p_tok = max(1, int(len(chat_prompt) * 0.7))
+                _c_tok = max(1, int(len(chat_response) * 0.7))
+                _cost = (_p_tok / 1000) * 0.0003 + (_c_tok / 1000) * 0.0006  # qwen-turbo 公开价(元/1K)
+                metrics.record_llm(model=conf.model_name_light,
+                                   prompt_tokens=_p_tok, completion_tokens=_c_tok, cost_cny=_cost)
                 add_trace_step(trace, "ChatLLM", "通用对话LLM",
                                 input_data=query_str, output_data=chat_response,
                                 start_time=chat_start)
@@ -463,6 +504,64 @@ def process(sess, prompt, session_id="default"):
     return response, intents, route, trace
 
 
+from functools import wraps
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("is_admin"):
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "error": "未登录"}), 401
+            return redirect("/admin/login")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    """管理员登录页: GET 显示表单, POST 校验凭据"""
+    if request.method == "POST":
+        u = (request.form.get("username") or "").strip()
+        p = (request.form.get("password") or "").strip()
+        if u == ADMIN_USERNAME and p == ADMIN_PASSWORD:
+            session["is_admin"] = True
+            return redirect("/admin/dashboard")
+        return render_template_string(
+            "<html><body style='font-family:sans-serif;text-align:center;margin-top:80px'>"
+            "<h3>用户名或密码错误</h3><a href='/admin/login'>返回重试</a></body></html>")
+    return render_template_string("""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>管理员登录 · 智租顾问</title>
+<style>body{font-family:'Microsoft YaHei',sans-serif;background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+.card{background:#fff;padding:40px 48px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.08);width:320px;text-align:center}
+input{width:100%;padding:10px 12px;margin:10px 0;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box}
+button{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;margin-top:8px}
+.err{color:#dc2626;font-size:13px}</style></head>
+<body><div class="card"><h2>🔐 管理员登录</h2><p style="color:#64748b;font-size:13px">仅限系统管理员查看运行指标</p>
+<form method="post"><input name="username" placeholder="用户名" required autofocus>
+<input name="password" type="password" placeholder="密码" required>
+<button type="submit">登 录</button></form></div></body></html>""")
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect("/admin/login")
+
+
+@app.route("/admin/dashboard")
+@login_required
+def admin_dashboard():
+    """管理员数据看板 (四层指标)"""
+    return send_file(os.path.join(BASE_DIR, "static", "admin_dashboard.html"))
+
+
+@app.route("/api/admin/metrics")
+@login_required
+def admin_metrics_api():
+    quality = metrics.quality_from_reports(os.path.join(PROJECT_ROOT, "实验脚本", "results"))
+    return jsonify(metrics.snapshot(quality=quality))
+
+
 @app.route("/")
 def index():
     return send_file(os.path.join(BASE_DIR, "新版网页.html"))
@@ -478,14 +577,19 @@ def chat():
     sess = get_session(session_id)
     # 为法律问答准备独立 session_id（复用同一会话）
     sess.setdefault("legal_session_id", session_id)
+    _t0 = time.time()
     try:
         reply, intents, route, trace = process(sess, message, session_id)
+        metrics.record_request(route=route, intents=",".join(intents),
+                               latency_ms=(time.time() - _t0) * 1000, ok=True)
     except Exception as e:
         logger.error(f"处理异常: {str(e)}")
         reply = "处理失败，请稍后重试或换个说法。"
         intents = []
         route = "error"
         trace = None
+        metrics.record_request(route="error", intents="",
+                               latency_ms=(time.time() - _t0) * 1000, ok=False, err=e)
     # 依据意图生成推荐问题，去重后最多4个
     suggestions = []
     for i in intents:
@@ -546,6 +650,7 @@ def chat_stream():
                 logger.error(f"保存历史失败: {e}")
 
     def generate():
+        _t0 = time.time()
         try:
             # 创建协作链路追踪
             trace = create_trace(session_id, message)
@@ -714,13 +819,14 @@ def chat_stream():
                     yield 'data: {"type":"start","route":"chat"}\n\n'
                     chat_prompt = f"你是一个友好的智能助手，请用简洁自然的中文回答用户问题。\n用户问题：{query_str}"
                     # 后台线程消费 LLM token 流 → 队列逐条投递给 SSE 生成器，实现首字低延迟的真流式
+                    # (模型路由) 闲聊走轻量模型 qwen-turbo: 成本/延迟优先
                     import queue as _queue
                     _evt_q = _queue.Queue()
                     _chat_collected = []
 
                     def _chat_worker():
                         async def _run():
-                            async for chunk in sess["llm"].astream(chat_prompt):
+                            async for chunk in sess["llm_light"].astream(chat_prompt):
                                 token_text = getattr(chunk, "content", "")
                                 if token_text:
                                     _chat_collected.append(token_text)
@@ -741,6 +847,15 @@ def chat_stream():
                             break
                         yield evt
                     chat_response = "".join(_chat_collected).strip()
+                    # 成本观测: 按字符数估算 token (中文约0.7token/字, 标注为估算)
+                    try:
+                        _p_tok = max(1, int(len(chat_prompt) * 0.7))
+                        _c_tok = max(1, int(len(chat_response) * 0.7))
+                        _cost = (_p_tok / 1000) * 0.0003 + (_c_tok / 1000) * 0.0006  # qwen-turbo 公开价(元/1K)
+                        metrics.record_llm(model=conf.model_name_light,
+                                           prompt_tokens=_p_tok, completion_tokens=_c_tok, cost_cny=_cost)
+                    except Exception:
+                        pass
                     add_trace_step(trace, "ChatLLM", "通用对话LLM",
                                     input_data=query_str, output_data=chat_response,
                                     start_time=chat_start)
@@ -888,6 +1003,8 @@ def chat_stream():
             safe_reply = reply.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
             # 完成trace记录
             finish_trace(trace)
+            metrics.record_request(route=route, intents=",".join(intents),
+                                   latency_ms=(time.time() - _t0) * 1000, ok=True)
             import json as _json_full
             trace_json = _json_full.dumps(trace, ensure_ascii=False)
             yield f'data: {{"type":"done","reply":"{safe_reply}","suggestions":{_json_suggestions(suggestions)},"route":"{route}","fav":{"true" if show_house_fav else "false"},"trace":{trace_json}}}\n\n'
@@ -896,6 +1013,8 @@ def chat_stream():
             logger.error(f"流式处理异常: {str(e)}")
             safe_err = str(e).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
             yield f'data: {{"type":"error","content":"处理失败：{safe_err}"}}\n\n'
+            metrics.record_request(route="error", intents="",
+                                   latency_ms=(time.time() - _t0) * 1000, ok=False, err=safe_err)
             yield f'data: {{"type":"done","reply":"处理失败：{safe_err}","suggestions":[],"route":"error"}}\n\n'
 
     return Response(generate(), mimetype="text/event-stream")

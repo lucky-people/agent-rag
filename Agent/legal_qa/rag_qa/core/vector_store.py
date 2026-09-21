@@ -38,6 +38,9 @@ from Agent.legal_qa.base.logger import logger
 
 # 定位 rag_qa 目录: 不修改 sys.path, 仅用于拼接本地模型(bert/reranker)路径.
 rag_qa_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 模型根目录: 默认 rag_qa 目录; 可通过环境变量 RAG_MODEL_ROOT 覆盖(CI/服务器场景, 如 models/ 放在工作区根).
+# 加载顺序: RAG_MODEL_ROOT/models/<name> -> rag_qa/models/<name> -> 模型仓库名(HF 自动下载兜底, 仅 eval_gate 等工具场景).
+rag_qa_model_root = os.environ.get("RAG_MODEL_ROOT", rag_qa_path)
 
 
 # todo 2.初始化全局配置 -> 实例化配置对象.
@@ -67,16 +70,26 @@ class VectorStore:
         self.logger.info(f'使用设备: {self.device}')
 
         # 4. 初始化BGE-Reranker重排序模型 -> 优化检索结果相关性排序.
-        # 4.1 拼接重排序模型的本地路径. 即: rag_qa/models/bge-reranker-large
-        reranker_path = os.path.join(rag_qa_path, 'models', 'bge-reranker-large')
+        # 4.1 拼接重排序模型的本地路径: 支持 RAG_MODEL_ROOT 覆盖 (CI: <root>/models/bge-reranker-large)
+        _reranker_candidates = [
+            os.path.join(rag_qa_model_root, 'models', 'bge-reranker-large'),
+            os.path.join(rag_qa_path, 'models', 'bge-reranker-large'),
+            'BAAI/bge-reranker-large',  # HF 兜底: 自动下载 (CI 场景)
+        ]
+        reranker_path = next((p for p in _reranker_candidates if os.path.exists(p) or p.startswith('BAAI/')), _reranker_candidates[0])
         # print(f'reranker_path: {reranker_path}')
 
         # 4.2 加载模型 -> 指定运行设备,  模型用于计算'查询-文档'的相关性得分.
         self.reranker = CrossEncoder(reranker_path, device=self.device)
 
         # 5. 初始化BGE-M3模型 -> 用于生成文档和查询的向量表示.
-        # 5.1 拼接模型文件的本地路径. 即: rag_qa/models/bge-m3
-        m3_path = os.path.join(rag_qa_path, 'models', 'bge-m3')
+        # 5.1 拼接模型文件的本地路径: 支持 RAG_MODEL_ROOT 覆盖 (CI: <root>/models/bge-m3)
+        _m3_candidates = [
+            os.path.join(rag_qa_model_root, 'models', 'bge-m3'),
+            os.path.join(rag_qa_path, 'models', 'bge-m3'),
+            'BAAI/bge-m3',  # HF 兜底: 自动下载 (CI 场景)
+        ]
+        m3_path = next((p for p in _m3_candidates if os.path.exists(p) or p.startswith('BAAI/')), _m3_candidates[0])
         # 5.2 加载模型 -> 模型用于生成文档和查询的向量表示.
         self.embedding_function = BGEM3EmbeddingFunction(
             model_name_or_path=m3_path,         # 模型本地路径

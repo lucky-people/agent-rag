@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>运行指标看板 · 智租顾问</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Microsoft YaHei', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
+  .top { background: #0f172a; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .top h1 { font-size: 18px; font-weight: 600; }
+  .top .sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .top a { color: #93c5fd; font-size: 13px; text-decoration: none; }
+  .wrap { max-width: 1280px; margin: 20px auto; padding: 0 16px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .card .k { font-size: 12px; color: #64748b; }
+  .card .v { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .card .v small { font-size: 13px; font-weight: 400; color: #64748b; }
+  .card .ok { color: #16a34a; } .card .bad { color: #dc2626; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .panel { background: #fff; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .panel h3 { font-size: 14px; color: #334155; margin-bottom: 8px; }
+  .chart { height: 260px; }
+  .full { grid-column: 1 / -1; }
+  .err-list { font-size: 12px; color: #dc2626; max-height: 120px; overflow: auto; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; margin-right: 6px; }
+  .tag.pass { background: #dcfce7; color: #16a34a; }
+  .tag.fail { background: #fee2e2; color: #dc2626; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>📊 智租顾问 · 运行指标看板</h1>
+    <div class="sub" id="meta">加载中…</div>
+  </div>
+  <a href="/admin/logout">退出登录</a>
+</div>
+
+<div class="wrap">
+  <div class="cards" id="kpis"></div>
+
+  <div class="grid">
+    <div class="panel"><h3>请求耗时分布（P50 / P99，ms）</h3><div id="ch-latency" class="chart"></div></div>
+    <div class="panel"><h3>路由分布（请求量）</h3><div id="ch-route" class="chart"></div></div>
+    <div class="panel"><h3>意图分布（请求量）</h3><div id="ch-intent" class="chart"></div></div>
+    <div class="panel"><h3>缓存命中率</h3><div id="ch-cache" class="chart"></div></div>
+    <div class="panel full"><h3>评估质量（回归门最近报告）<span id="eval-tag"></span></h3>
+      <div id="ch-quality" class="chart"></div></div>
+    <div class="panel full"><h3>最近错误</h3><div id="err-box" class="err-list">无</div></div>
+  </div>
+</div>
+
+<script>
+let charts = {};
+function mk(id){ const el = document.getElementById(id); charts[id] = echarts.init(el); return charts[id]; }
+function base(){ return { tooltip: { trigger: 'axis' }, grid: { left: 60, right: 20, top: 30, bottom: 30 } }; }
+mk('ch-latency'); mk('ch-route'); mk('ch-intent'); mk('ch-cache'); mk('ch-quality');
+
+function kpi(label, value, extra, cls){ return '<div class="card"><div class="k">'+label+'</div><div class="v '+cls+'">'+value+(extra?'<small> '+extra+'</small>':'')+'</div></div>'; }
+
+async function refresh(){
+  const r = await fetch('/api/admin/metrics'); if(!r.ok) return;
+  const d = await r.json();
+  document.getElementById('meta').textContent =
+    '运行时长 ' + Math.round(d.uptime_s/60) + ' 分钟 · QPS ' + d.qps + ' · 请求 ' + d.requests_total +
+    ' · 成功率 ' + (d.requests_total ? (100*d.requests_ok/d.requests_total).toFixed(1)+'%' : '-');
+  document.getElementById('kpis').innerHTML =
+    kpi('总请求', d.requests_total) +
+    kpi('成功 / 失败', d.requests_ok + ' / ' + d.requests_err, '', d.requests_err ? 'bad' : 'ok') +
+    kpi('平均耗时', d.latency_avg, 'ms') +
+    kpi('P50 / P99', d.latency_p50 ?? '-', 'ms / ' + (d.latency_p99 ?? '-') + ' ms') +
+    kpi('缓存命中率', d.cache_hit_rate == null ? '-' : (d.cache_hit_rate*100).toFixed(1)+'%', d.cache_hit + ' 命中 / ' + d.cache_miss + ' 未命中') +
+    kpi('LLM 调用', d.llm_calls) +
+    kpi('反思触发率', d.agentic_total ? (d.agentic_reflect_rate*100).toFixed(0)+'%' : '-', d.agentic_total + ' 次法律问答');
+
+  // 耗时
+  charts['ch-latency'].setOption({...base(), xAxis:{type:'category',data:['平均','P50','P99']},
+    yAxis:{type:'value',name:'ms'}, series:[{type:'bar',data:[d.latency_avg,d.latency_p50??0,d.latency_p99??0],
+      itemStyle:{color:'#2563eb'}, label:{show:true,position:'top'}}]});
+  // 路由
+  const rd = Object.entries(d.route_dist);
+  charts['ch-route'].setOption({tooltip:{trigger:'axis'}, xAxis:{type:'category',data:rd.map(x=>x[0])},
+    yAxis:{type:'value'}, series:[{type:'bar',data:rd.map(x=>x[1]),itemStyle:{color:'#f97316'}}]});
+  // 意图
+  const idt = Object.entries(d.intent_dist);
+  charts['ch-intent'].setOption({tooltip:{trigger:'item'}, legend:{bottom:0},
+    series:[{type:'pie',radius:['35%','65%'],data:idt.map(([n,v])=>({name:n,value:v})),
+      label:{formatter:'{b}: {c}'}}]});
+  // 缓存
+  const ch = d.cache_hit + d.cache_miss;
+  charts['ch-cache'].setOption({tooltip:{trigger:'item'},
+    series:[{type:'pie',radius:['35%','65%'],center:['50%','45%'],
+      data:[{name:'命中',value:d.cache_hit},{name:'未命中',value:d.cache_miss}],
+      label:{formatter: d.cache_hit_rate==null?'暂无数据':'{b}: {c} ({d}%)'}}]});
+  // 质量
+  const q = d.quality || {};
+  const tag = document.getElementById('eval-tag');
+  tag.innerHTML = q.pass ? '<span class="tag pass">PASS</span>' : '<span class="tag fail">FAIL</span>';
+  const tr = q.truth_rate || {};
+  const names = Object.keys(tr);
+  charts['ch-quality'].setOption({...base(),
+    xAxis:{type:'category',data:names.map(n=>n.replace('_',' '))},
+    yAxis:{type:'value',min:0,max:1,name:'引用真实率'},
+    series:[{type:'bar',data:names.map(n=>tr[n]),itemStyle:{color:'#16a34a'},label:{show:true,position:'top',formatter:p=>(p.value*100).toFixed(1)+'%'}}]});
+  // 错误
+  document.getElementById('err-box').textContent = d.errors.length ? d.errors.map(e=>'['+e.ts+'] '+e.route+' → '+e.err).join('\n') : '无';
+}
+refresh(); setInterval(refresh, 5000);
+window.addEventListener('resize', ()=>Object.values(charts).forEach(c=>c.resize()));
+</script>
+</body>
+</html>

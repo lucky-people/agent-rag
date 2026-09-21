@@ -1,0 +1,94 @@
+# 评估回归门 (Evaluation Gate CI)
+# 固定评估集 → 确定性幻觉审计 (+可选 RAGAS) → 与基线对比 → 指标回退超阈值即 FAIL
+#
+# 触发: 手动 (workflow_dispatch) + 每周一凌晨 (schedule)
+# 依赖: Docker service containers (MySQL/Redis/Milvus) + DASHSCOPE_API_KEY secret
+# 注意: Gitee 不执行 GitHub Actions; 本 workflow 在镜像到 GitHub 后自动生效,
+#       本地/服务器可用 `python 实验脚本/eval_gate.py` 一键执行 (见 docs/EVAL_GATE.md)
+name: Evaluation Gate
+
+on:
+  workflow_dispatch:            # 手动触发
+  schedule:
+    - cron: '0 2 * * 1'         # 每周一 02:00 (UTC) 全量回归
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+      RAG_MODEL_ROOT: ${{ github.workspace }}/models
+      HF_HUB_ENABLE_HF_TRANSFER: "0"
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: zhizu123
+          MYSQL_DATABASE: zhizu
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pzhizu123"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+      milvus:
+        image: milvusdb/milvus:v2.4.23
+        ports: ['19530:19530']
+        command: ["milvus", "run", "standalone"]
+        options: >-
+          --health-cmd="curl -f http://localhost:9091/healthz || exit 1"
+          --health-interval=15s --health-timeout=10s --health-retries=15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装依赖
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ragas==0.2.12 huggingface_hub
+
+      - name: 准备本地密钥 (config_local)
+        run: |
+          mkdir -p config_local
+          cat > config_local/keys.py <<'EOF'
+          # CI 自动生成: 仅注入 DASHSCOPE_API_KEY
+          DASHSCOPE_API_KEY = __import__('os').environ.get('DASHSCOPE_API_KEY', '')
+          EOF
+          [ -f Agent/legal_qa/config.ini.example ] && cp Agent/legal_qa/config.ini.example config_local/config.ini || echo "no example"
+          ls config_local/
+
+      - name: 导入数据库 Schema + 种子数据
+        run: |
+          MYSQL_PWD=zhizu123 mysql -h 127.0.0.1 -uroot < Agent/sql/rental_schema.sql
+          MYSQL_PWD=zhizu123 mysql -h 127.0.0.1 -uroot < Agent/sql/seed_data.sql
+          MYSQL_PWD=zhizu123 mysql -h 127.0.0.1 -uroot -e "CREATE DATABASE IF NOT EXISTS laws_all CHARACTER SET utf8mb4;"
+          MYSQL_PWD=zhizu123 mysql -h 127.0.0.1 -uroot -e "ALTER DATABASE zhizu CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
+
+      - name: 法律知识入库 (BM25 语料 + Milvus 向量)
+        run: |
+          python Agent/legal_qa/mysql_qa/replace_jpkb_data.py
+          python Agent/ingest_rental_laws.py
+          python Agent/ingest_rental_tips.py || echo "tips 可选跳过"
+
+      - name: 跑评估回归门 (确定性审计 + 基线对比)
+        run: |
+          python 实验脚本/eval_gate.py --rounds 1
+
+      - name: 上传评估报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: 实验脚本/results/eval_report_*.json

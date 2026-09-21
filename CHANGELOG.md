@@ -8,6 +8,9 @@
 ## [Unreleased]
 
 ### 新增
+- **评估回归门（Evaluation Gate）**：`实验脚本/eval_gate.py` 一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值 exit 1 FAIL；配套 `.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发）与 `docs/EVAL_GATE.md`
+- **管理员数据看板**：`/admin/dashboard` 四层指标可视化（技术层 QPS/P50/P99、业务层路由/意图分布、缓存层命中率、质量层评估报告、成本层 LLM 统计），管理员/用户双端权限隔离（Flask Session 鉴权，凭据入 `config_local/`）
+- **模型路由（Intent → Model）**：闲聊走 qwen-turbo（成本/延迟优先），法律/合同走 qwen-plus（质量优先）；LLM 调用次数与估算成本进入看板成本区
 - CI/CD 自动化质量门（GitHub Actions：Python 3.10 / 3.11 矩阵，ruff 静态检查 + 编译检查 + 单元测试 + SQL 只读白名单安全回归）
 - 多意图并行调度：一次提问多个意图时，子 Agent 调用并发执行（ThreadPoolExecutor 并行预取，总延迟 ≈ 最慢意图）
 - 编排可观测性：RecommendAgent 编排的子调用（域 / 状态 / 耗时）在链路追踪面板独立展示
