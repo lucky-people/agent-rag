@@ -324,34 +324,75 @@ python Agent/legal_qa/mysql_qa/replace_jpkb_data.py   # 法律 FAQ 入库（BM25
 
 ## 📸 功能演示
 
-<details>
-<summary>点击展开 8 张功能截图</summary>
+> 点击任意截图即可查看原图。
 
-**① 系统主界面**：左侧智能对话，右侧能力中心显示 4 智能体在线状态与"双引擎在线"
-<img src="docs/screenshots/01-main-ui.png" width="820"/>
+### ① 界面总览
 
-**② 房源智能查询**：自然语言生成 SQL，结构化房源卡片 + 一键收藏 + 协作链路展示
-<img src="docs/screenshots/02-house-query.png" width="680"/>
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/01-main-ui.png" target="_blank"><img src="docs/screenshots/01-main-ui.png" width="760"/></a><br/>
+      <sub>系统主界面：左侧智能对话，右侧 4 智能体在线状态 + 双引擎在线</sub>
+    </td>
+  </tr>
+</table>
 
-**③ 真实房源详情**：跳转房天下真实房源页，数据可溯源
-<img src="docs/screenshots/03-house-detail.png" width="820"/>
+### ② 核心查询
 
-**④ 交叉查询·多智能体编排**：链路面板展开 4 个 SubAgent 节点
-<img src="docs/screenshots/04-cross-query.png" width="640"/>
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/02-house-query.png" target="_blank"><img src="docs/screenshots/02-house-query.png" width="400"/></a><br/>
+      <sub>房源智能查询：自然语言 → SQL，结构化卡片 + 收藏 + 协作链路</sub>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/03-house-detail.png" target="_blank"><img src="docs/screenshots/03-house-detail.png" width="400"/></a><br/>
+      <sub>真实房源详情：跳转房天下真实房源页，数据可溯源</sub>
+    </td>
+  </tr>
+</table>
 
-**⑤ 组合查询·多意图并行**：House + Poi 并行预取、保序输出
-<img src="docs/screenshots/05-combo-query.png" width="640"/>
+### ③ 多智能体编排
 
-**⑥ Agentic RAG 法律问答**：结论 + 法律依据 + 引用条文，全程可溯源
-<img src="docs/screenshots/06-rag-answer.png" width="640"/>
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/04-cross-query.png" target="_blank"><img src="docs/screenshots/04-cross-query.png" width="360"/></a><br/>
+      <sub>交叉查询：链路面板展开 4 个 SubAgent 节点</sub>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/05-combo-query.png" target="_blank"><img src="docs/screenshots/05-combo-query.png" width="360"/></a><br/>
+      <sub>组合查询：多意图并行预取、保序输出</sub>
+    </td>
+  </tr>
+</table>
 
-**⑦ Redis 缓存加速**：命中缓存 1.1s vs 完整 RAG 23.3s（快约 5 倍）
-<img src="docs/screenshots/07-redis-cache.png" width="640"/>
+### ④ Agentic RAG 与性能
 
-**⑧ Milvus 向量知识库**：法律条文经 BGE-M3 编码为稠密 + 稀疏双路存储
-<img src="docs/screenshots/08-milvus-store.png" width="820"/>
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/06-rag-answer.png" target="_blank"><img src="docs/screenshots/06-rag-answer.png" width="380"/></a><br/>
+      <sub>法律问答：结论 + 法律依据 + 引用条文，全程可溯源</sub>
+    </td>
+    <td align="center">
+      <a href="docs/screenshots/07-redis-cache.png" target="_blank"><img src="docs/screenshots/07-redis-cache.png" width="380"/></a><br/>
+      <sub>Redis 缓存：命中 1.1s vs 完整 RAG 23.3s（快约 5 倍）</sub>
+    </td>
+  </tr>
+</table>
 
-</details>
+### ⑤ 向量知识库
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/08-milvus-store.png" target="_blank"><img src="docs/screenshots/08-milvus-store.png" width="760"/></a><br/>
+      <sub>Milvus 向量库：法律条文经 BGE-M3 编码为稠密 + 稀疏双路存储</sub>
+    </td>
+  </tr>
+</table>
+
 
 ---
 
