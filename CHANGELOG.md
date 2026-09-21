@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 新增
+- **企业级一键启动器（Launcher）**：`Agent/start.py` 替换原 `start.bat` 并发盲启动——预检（Python/MySQL/Redis/Milvus/端口冲突）→ 分组拉起（MCP 4 → A2A 5 → Web）→ 健康轮询（TCP 探测、最长 60s、输出 ✅/❌ 汇总）→ 自动打开浏览器；日志落盘 `logs/startup/`、PID 追踪支持 `--stop` 一键清理、`--status` 状态查询；`start.bat` 改为薄壳
+
 ### 规范化
 - 目录与文件重命名为英文（保留 git 历史）：`实验脚本/`→`scripts/`、`数据集/`→`datasets/`、`Agent/数据库操作/`→`Agent/data_collection/`、`新版网页.html`→`Agent/static/index.html`、`启动系统.bat`→`Agent/start.bat`、`数据与运行说明.md`→`Agent/RUN_NOTES.md`；清理根目录本地残留文件
 - `scripts/` 历史脚本通过 ruff 全量检查（修复 E702/F401/F841 共 19 处）

@@ -30,7 +30,20 @@
 
 ### 方式一：一键启动（推荐）
 
-双击运行 `Agent/start.bat`，自动依次打开 4 个 MCP 服务器、4 个 A2A 代理服务器，最后启动 Web 前端（http://localhost:8501）。
+双击运行 `Agent/start.bat`（或 `Agent/` 目录下 `python start.py`），启动器会依次完成：
+
+1. **预检**：Python / 中间件（MySQL 3306、Redis 6379、Milvus 19530）/ 端口冲突，问题一次性列清
+2. **分组拉起**：MCP 工具服务器（4）→ A2A 智能体服务器（5）→ Web 前端（8501），组间等待就绪，避免并发抢中间件导致部分服务起不来
+3. **健康轮询**：每个服务 TCP 探测，最长等待 60s，输出 ✅/❌ 汇总表
+4. 自动打开浏览器 http://localhost:8501（管理员看板 `/admin/dashboard`，默认 admin/admin123）
+
+辅助命令：
+
+- `python start.py --status`：查看中间件与各服务端口状态
+- `python start.py --stop`：停止由启动器拉起的全部后台服务
+- 启动日志：`Agent/logs/startup/<服务名>.log(.err.log)`（起不来看日志尾部即知原因）
+
+> 中间件不在线时预检会明确提示「请先启动: docker compose up -d」；本机 MySQL（phpstudy）需先启动 MySQL 服务。
 
 ### 方式二：手动逐个启动（按依赖顺序）
 
