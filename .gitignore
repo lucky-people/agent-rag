@@ -102,3 +102,5 @@ env_full_deps.txt
 Agent/legal_qa/mysql_qa/data/backup/
 # 链路对比实验结果
 Agent/legal_qa/results/
+
+docs/INTERVIEW_QA.md

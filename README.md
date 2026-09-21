@@ -1,6 +1,7 @@
 # 🏠 智租顾问 · 基于多智能体协作与 Agentic RAG 的智能租房咨询系统
 
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
+![star](https://gitee.com/gao-shuaizhou/zhizu-advisor/badge/star.svg)
 ![python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-3776AB.svg)
 ![tests](https://img.shields.io/badge/tests-41%20passed-brightgreen.svg)
 ![a2a](https://img.shields.io/badge/A2A-MultiAgent-orange.svg)
@@ -8,6 +9,12 @@
 ![rag](https://img.shields.io/badge/RAG-Agentic%20%2B%20Hybrid-green.svg)
 ![milvus](https://img.shields.io/badge/Milvus-VectorDB-6600cc.svg)
 
+<p align="center">
+  <b>💬 一句话问出答案：</b>
+  <a href="https://www.bilibili.com/video/BV1queJ6qE7f">🎬 B站演示视频</a> ·
+  <a href="README.md#-使用示例">📝 提问示例</a> ·
+  <a href="docs/TECHNICAL_DECISIONS.md">🧭 技术选型决策</a>
+</p>
 面向郑州本地租房场景的 **多智能体协作 + Agentic RAG** 智能问答系统：输入一句自然语言，系统自动完成 **LLM 意图路由 → A2A 多智能体编排 / Agentic RAG 反思循环 → 数据库 / 知识库检索 → SSE 流式回复**，覆盖房源查询、地铁出行、周边探索、综合推荐、法律问答与合同审查六大场景。
 
 > **技术栈**：Python 3.10 · Flask(SSE) · A2A 多智能体协议 · MCP 工具调用 · LangChain · LLM 意图路由（通义千问 qwen-plus） · BERT 查询分类 · BM25 + BGE-M3 混合检索 · BGE Reranker · Milvus 向量库 · Redis 缓存 · MySQL
