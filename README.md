@@ -466,6 +466,12 @@ python Agent/legal_qa/mysql_qa/replace_jpkb_data.py   # 法律 FAQ 入库（BM25
       <sub>管理员运行看板：请求量/耗时 P50·P99/路由分布/意图分布/缓存命中率/LLM 成本 实时监控（仅管理员可见）</sub>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/10-eval-gate-pass.png" target="_blank"><img src="docs/screenshots/10-eval-gate-pass.png" width="380"/></a><br/>
+      <sub>评估回归门：8 题 × 3 策略 × 3 轮 vs 黄金基线，引用真实率全部通过容差（单命令一键回归，CI 可定时触发）</sub>
+    </td>
+  </tr>
 </table>
 
 
