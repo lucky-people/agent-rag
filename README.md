@@ -457,6 +457,17 @@ python Agent/legal_qa/mysql_qa/replace_jpkb_data.py   # 法律 FAQ 入库（BM25
   </tr>
 </table>
 
+### ⑥ 企业级工程化
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="docs/screenshots/09-admin-dashboard.png" target="_blank"><img src="docs/screenshots/09-admin-dashboard.png" width="760"/></a><br/>
+      <sub>管理员运行看板：请求量/耗时 P50·P99/路由分布/意图分布/缓存命中率/LLM 成本 实时监控（仅管理员可见）</sub>
+    </td>
+  </tr>
+</table>
+
 
 ---
 
