@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 修复
+- **评估回归门 workflow 在 GitHub 上无法启动**：`eval-ci.yml` 的 Milvus service 使用了 GitHub 不支持的 `command` 数组（报 `Invalid workflow file: ... A sequence was not expected`），改为与本地 compose 一致的内嵌 etcd 配置 + 镜像默认启动命令；同时该 job 的 Python 由 3.10 提到 3.11
 - **CI Python 版本与依赖不匹配**：`numpy==2.3.2` / `scikit-learn==1.9.0` / `matplotlib==3.11.1` 均要求 Python >=3.11，原 CI 矩阵含 3.10 会导致首次安装即失败；CI 矩阵与 README/CONTRIBUTING 环境说明统一改为 **3.11 / 3.12**
 - **全新 clone 跑不起法律问答链路**：`QueryClassifier` 原先强依赖本地 `models/bert-base-chinese`，缺失时直接 OSError；现改为 `RAG_MODEL_ROOT` → `rag_qa/models/` → HuggingFace 仓库名三级兜底（与 `vector_store.py` 一致），微调分类器缺失时降级为未微调 BERT 并给出明确告警
 - **`.gitignore` 遗漏运行产物**：补 `Agent/contract_uploads/`（用户上传合同，含隐私）、`Agent/legal_qa/mysql_qa/results/`、`.ruff_cache/`
