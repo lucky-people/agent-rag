@@ -29,14 +29,20 @@ from Agent.utils.format import format_exception
 conf = Config()
 
 # 初始化LLM
-llm = ChatOpenAI(
-    model=conf.model_name,
-    base_url=conf.base_url,
-    api_key=conf.api_key,
-    temperature=0.1,
-    request_timeout=10,
-    max_retries=1
-)
+# 说明: 缺少 API Key 时不在 import 阶段直接抛 OpenAIError, 而是降级为 None 并告警——
+# 否则全新 clone(未配置 config_local/keys.py)连单元测试都跑不起来; 调用侧已有 try/except 兜底。
+try:
+    llm = ChatOpenAI(
+        model=conf.model_name,
+        base_url=conf.base_url,
+        api_key=conf.api_key,
+        temperature=0.1,
+        request_timeout=10,
+        max_retries=1
+    )
+except Exception as e:
+    logger.warning(f"LLM 初始化失败({type(e).__name__}: {e}); 相关链路降级, 请检查 DASHSCOPE_API_KEY / config_local/keys.py")
+    llm = None
 
 # 数据表 schema
 table_schema_string = """  # 定义POI表的SQL schema字符串，用于Prompt上下文
