@@ -10,11 +10,11 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://gitee.com/gao-shuaizhou/zhizu-advisor.git
-cd zhizu-advisor
+git clone https://github.com/lucky-people/agent-rag.git
+cd agent-rag
 
-# 2. 创建虚拟环境（Python 3.10+）
-conda create -n lang_env python=3.10
+# 2. 创建虚拟环境（Python 3.11+，requirements 中 numpy/scikit-learn/matplotlib 已要求 >=3.11）
+conda create -n lang_env python=3.11
 conda activate lang_env
 
 # 3. 安装依赖（CPU 版；GPU 用户追加 requirements-gpu.txt）
@@ -55,7 +55,7 @@ docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
 
 | 项 | 要求 |
 |---|---|
-| Python 版本 | 3.10+ |
+| Python 版本 | 3.11+ |
 | 代码风格 | PEP 8 + 中文注释 |
 | 提交信息 | Conventional Commits 格式 |
 | 测试 | 核心逻辑必须带 `tests/` 下的单测 |
@@ -76,11 +76,13 @@ docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
 - `test_format.py`：工具函数（SQL LIMIT 补充、JSON 解析、异常格式化）
 - `test_intent_rules.py`：意图关键词兜底规则
 - `test_core_logic.py`：SQL 只读白名单 / 基类三分支 / 编排降级
+- `test_metrics.py`：看板指标采集（请求 / 分位数 / 缓存命中 / 评估报告读取）
+- `test_model_fallback.py`：模型缺失兜底（全新 clone 未下载 models/ 时不崩）
 
 新增逻辑请参照上述模式补充对应测试。
 
 ## 提问与交流
 
-- Bug / 功能建议：提交 [Issue](https://gitee.com/gao-shuaizhou/zhizu-advisor/issues)
+- Bug / 功能建议：提交 [Issue](https://github.com/lucky-people/agent-rag/issues)
 - 使用问题：先看 [README](README.md) 与 [数据与运行说明](Agent/RUN_NOTES.md)
 - 演示视频：B 站 [BV1queJ6qE7f](https://www.bilibili.com/video/BV1queJ6qE7f)

@@ -26,6 +26,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGS_DIR = os.path.join(BASE_DIR, "logs", "startup")
 os.makedirs(LOGS_DIR, exist_ok=True)
 
+# 输出重定向到管道/文件时(CI 日志、start.bat 捕获输出), Windows 默认用 GBK 编码,
+# 打印 ✓/✗/✅ 等符号会抛 UnicodeEncodeError; 这里降级为替换字符, 保证启动器不因输出而崩.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(errors="replace")
+
 # (服务名, 端口, 启动命令模块)
 MCP_SERVERS = [
     ("MCP-House",    8004, "mcp_server.mcp_house_server"),
@@ -47,12 +53,23 @@ ALL_PORTS = [p for _, p, _ in MCP_SERVERS + A2A_SERVERS + [WEB_SERVER]]
 
 
 def pick_python():
+    """选择解释器: ZHIZU_PYTHON > 常见 conda 环境 > 当前解释器.
+
+    不写死本机绝对路径(避免把个人目录带进开源仓库);
+    环境名可用 ZHIZU_CONDA_ENV 覆盖, 默认 lang_env.
+    """
     py = os.environ.get("ZHIZU_PYTHON", "")
-    if not py:
-        cand = r"C:\Users\31077\anaconda3\envs\lang_env\python.exe"
+    if py:
+        return py
+    env_name = os.environ.get("ZHIZU_CONDA_ENV", "lang_env")
+    home = os.path.expanduser("~")
+    rel = os.path.join("envs", env_name, "python.exe") if os.name == "nt" \
+        else os.path.join("envs", env_name, "bin", "python")
+    for base in ("anaconda3", "miniconda3", "Anaconda3", "Miniconda3", "miniforge3", "mambaforge"):
+        cand = os.path.join(home, base, rel)
         if os.path.exists(cand):
-            py = cand
-    return py or sys.executable
+            return cand
+    return sys.executable
 
 
 def port_listening(port, host="127.0.0.1", timeout=0.6):

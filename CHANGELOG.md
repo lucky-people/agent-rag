@@ -7,7 +7,15 @@
 
 ## [Unreleased]
 
+### 修复
+- **CI Python 版本与依赖不匹配**：`numpy==2.3.2` / `scikit-learn==1.9.0` / `matplotlib==3.11.1` 均要求 Python >=3.11，原 CI 矩阵含 3.10 会导致首次安装即失败；CI 矩阵与 README/CONTRIBUTING 环境说明统一改为 **3.11 / 3.12**
+- **全新 clone 跑不起法律问答链路**：`QueryClassifier` 原先强依赖本地 `models/bert-base-chinese`，缺失时直接 OSError；现改为 `RAG_MODEL_ROOT` → `rag_qa/models/` → HuggingFace 仓库名三级兜底（与 `vector_store.py` 一致），微调分类器缺失时降级为未微调 BERT 并给出明确告警
+- **`.gitignore` 遗漏运行产物**：补 `Agent/contract_uploads/`（用户上传合同，含隐私）、`Agent/legal_qa/mysql_qa/results/`、`.ruff_cache/`
+- **个人本机路径入库**：`Agent/start.py` / `Agent/start.bat` 移除硬编码的 `C:\Users\<用户名>\...` 解释器路径，改为 `ZHIZU_PYTHON` / `ZHIZU_CONDA_ENV` + 常见 conda 目录探测
+- **文档口径不一致**：README 目录树测试数（41→48）、种子数据条数（51/14/14→52/15/15/7 天天气）与徽章 Python 版本、`config.ini.example` 的 Milvus host（localhost→127.0.0.1）对齐
+
 ### 新增
+- **本地模型一键下载**：`scripts/download_models.py`（bert-base-chinese / bge-m3 / bge-reranker-large，支持 `--only` / `--dir` / 镜像加速），补齐"models/ 不入库"的可复现性缺口
 - **企业级一键启动器（Launcher）**：`Agent/start.py` 替换原 `start.bat` 并发盲启动——预检（Python/MySQL/Redis/Milvus/端口冲突）→ 分组拉起（MCP 4 → A2A 5 → Web）→ 健康轮询（TCP 探测、最长 60s、输出 ✅/❌ 汇总）→ 自动打开浏览器；日志落盘 `logs/startup/`、PID 追踪支持 `--stop` 一键清理、`--status` 状态查询；`start.bat` 改为薄壳
 
 ### 规范化
@@ -18,7 +26,7 @@
 - **评估回归门（Evaluation Gate）**：`scripts/eval_gate.py` 一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值 exit 1 FAIL；配套 `.github/workflows/eval-ci.yml`（每周一自动回归 + 手动触发）与 `docs/EVAL_GATE.md`
 - **管理员数据看板**：`/admin/dashboard` 四层指标可视化（技术层 QPS/P50/P99、业务层路由/意图分布、缓存层命中率、质量层评估报告、成本层 LLM 统计），管理员/用户双端权限隔离（Flask Session 鉴权，凭据入 `config_local/`）
 - **模型路由（Intent → Model）**：闲聊走 qwen-turbo（成本/延迟优先），法律/合同走 qwen-plus（质量优先）；LLM 调用次数与估算成本进入看板成本区
-- CI/CD 自动化质量门（GitHub Actions：Python 3.10 / 3.11 矩阵，ruff 静态检查 + 编译检查 + 单元测试 + SQL 只读白名单安全回归）
+- CI/CD 自动化质量门（GitHub Actions：Python 3.11 / 3.12 矩阵，ruff 静态检查 + 编译检查 + 单元测试 + SQL 只读白名单安全回归）
 - 多意图并行调度：一次提问多个意图时，子 Agent 调用并发执行（ThreadPoolExecutor 并行预取，总延迟 ≈ 最慢意图）
 - 编排可观测性：RecommendAgent 编排的子调用（域 / 状态 / 耗时）在链路追踪面板独立展示
 - 评估体系闭环：RAGAS 第三方基准交叉验证 + 确定性幻觉审计；条款级重排修复（`rerank_docs`，D 策略忠实度 +39%）
@@ -68,4 +76,4 @@
 - 重写 README：双引擎架构图、核心流程、目录架构、快速开始
 - 新增 LICENSE（MIT）、.gitignore、演示视频（B 站）
 
-[1.0.0]: https://gitee.com/gao-shuaizhou/zhizu-advisor/releases/tag/v1.0.0
+[1.0.0]: https://github.com/lucky-people/agent-rag/releases/tag/v1.0.0

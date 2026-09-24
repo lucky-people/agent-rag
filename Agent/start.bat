@@ -14,7 +14,8 @@ cd /d "%~dp0"
 
 rem ---- Pick Python: ZHIZU_PYTHON env > common conda path > system python ----
 set "PYTHON=%ZHIZU_PYTHON%"
-if "%PYTHON%"=="" if exist "C:\Users\31077\anaconda3\envs\lang_env\python.exe" set "PYTHON=C:\Users\31077\anaconda3\envs\lang_env\python.exe"
+if "%PYTHON%"=="" if exist "%USERPROFILE%\anaconda3\envs\lang_env\python.exe" set "PYTHON=%USERPROFILE%\anaconda3\envs\lang_env\python.exe"
+if "%PYTHON%"=="" if exist "%USERPROFILE%\miniconda3\envs\lang_env\python.exe" set "PYTHON=%USERPROFILE%\miniconda3\envs\lang_env\python.exe"
 if "%PYTHON%"=="" set "PYTHON=python"
 
 "%PYTHON%" start.py %*

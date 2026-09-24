@@ -38,7 +38,7 @@ jobs:
           --health-cmd="redis-cli ping"
           --health-interval=10s --health-timeout=5s --health-retries=10
       milvus:
-        image: milvusdb/milvus:v2.4.23
+        image: milvusdb/milvus:v2.4.15
         ports: ['19530:19530']
         command: ["milvus", "run", "standalone"]
         options: >-

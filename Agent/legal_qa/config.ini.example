@@ -25,7 +25,8 @@ log_file = logs/app.log
 
 # Milvus 配置
 [milvus]
-host = localhost
+# 用 127.0.0.1 而非 localhost: Windows 下 localhost 可能解析为 ipv6 ::1, 而 Docker Milvus 仅监听 ipv4
+host = 127.0.0.1
 port = 19530
 database_name = laws_all
 collection_name = edurag_final

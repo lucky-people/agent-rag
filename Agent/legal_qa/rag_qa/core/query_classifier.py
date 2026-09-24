@@ -38,6 +38,33 @@ from transformers import Trainer, TrainingArguments
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 
+
+# 预训练 BERT 仓库名: 本地 models/bert-base-chinese 缺失时回退到 HuggingFace 自动下载.
+# 目的: 让"全新 clone 未下载模型"的环境也能初始化法律问答链路, 而不是直接 OSError 崩掉.
+BERT_BASE_REPO = 'bert-base-chinese'
+
+
+def _resolve_bert_base():
+    """
+    函数功能: 解析可用的 BERT 基础模型位置.
+    加载顺序: RAG_MODEL_ROOT/models/bert-base-chinese -> rag_qa/models/bert-base-chinese -> HF 仓库名(自动下载).
+    :return: 本地模型目录(str) 或 HuggingFace 仓库名(str).
+    """
+    # 每次调用时读取 RAG_MODEL_ROOT, 便于运行期切换模型目录(也便于单元测试注入).
+    model_root = os.environ.get('RAG_MODEL_ROOT') or rag_qa_path
+    for _p in (
+        os.path.join(model_root, 'models', 'bert-base-chinese'),
+        os.path.join(rag_qa_path, 'models', 'bert-base-chinese'),
+    ):
+        if os.path.exists(_p):
+            return _p
+    logger.warning(
+        f'未找到本地 models/bert-base-chinese, 回退到 HuggingFace 自动下载({BERT_BASE_REPO}, 首次较慢); '
+        f'建议预先执行: python scripts/download_models.py'
+    )
+    return BERT_BASE_REPO
+
+
 # todo 2.定义QueryClassifier类: 封装BERT查询分类的完整流程 -> 模型加载, 训练, 评估, 预测...
 class QueryClassifier:
     # todo 2.1 初始化方法: 配置模型路径, 加载分词器, 选择设备, 定义标签映射.
@@ -45,10 +72,10 @@ class QueryClassifier:
         # 1. 存储模型路径: 用于后续加载或保存模型.
         self.model_path = model_path
         # 2. 加载BERT分词器: 将文本转换成模型可以理解的输入.
-        # 2.1 拼接预训练BERT模型的本地路径.
-        bert_path = os.path.join(rag_qa_path, 'models', 'bert-base-chinese')
+        # 2.1 解析预训练BERT模型位置(本地优先, 缺失则 HF 兜底).
+        self.bert_base_path = _resolve_bert_base()
         # 2.2 加载分词器.
-        self.tokenizer = BertTokenizer.from_pretrained(bert_path)
+        self.tokenizer = BertTokenizer.from_pretrained(self.bert_base_path)
 
         # 3. 初始化模型变量, 后续通过 load_model()加载或创建模型.
         self.model = None
@@ -81,10 +108,13 @@ class QueryClassifier:
             # 记录加载成功的日志
             logger.info(f"加载模型: {self.model_path}")
         else:
-            # 2. 若模型不存在, 初始化新模型
-            # 参1: 模型路径（用绝对路径，避免相对路径依赖工作目录）,  参2: 二分类任务.
-            bert_pretrained_path = os.path.join(rag_qa_path, 'models', 'bert-base-chinese')
-            self.model = BertForSequenceClassification.from_pretrained(bert_pretrained_path, num_labels=2)
+            # 2. 若微调分类模型不存在, 用基础 BERT 初始化(保证链路可启动, 但分类质量未训练)
+            # 参1: 模型路径（本地绝对路径或 HF 仓库名，避免相对路径依赖工作目录）,  参2: 二分类任务.
+            logger.warning(
+                f"未找到微调分类模型 {self.model_path}, 使用未微调的基础 BERT 初始化; "
+                f"分类质量会下降, 建议执行: python scripts/train_intent_classifier.py"
+            )
+            self.model = BertForSequenceClassification.from_pretrained(self.bert_base_path, num_labels=2)
             # 将模型移到指定设备
             self.model.to(self.device)
             # 记录初始化模型的日志

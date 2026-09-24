@@ -44,7 +44,7 @@ ENV/
 logs/
 *.log
 
-# ========== 模型文件（体积大，可从 HuggingFace 重新下载） ==========
+# ========== 模型文件（体积大，不入库；用 scripts/download_models.py 一键下载） ==========
 Agent/legal_qa/rag_qa/models/
 *.h5
 *.hdf5
@@ -81,6 +81,7 @@ desktop.ini
 
 # ========== 测试 / 中间产物 ==========
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 .coverage.*
@@ -100,8 +101,12 @@ env_full_deps.txt
 # ========== 运行产物（可重新生成，不上传） ==========
 # replace_jpkb_data.py 自动备份
 Agent/legal_qa/mysql_qa/data/backup/
+# 用户上传的租房合同（含个人隐私，绝不入库）
+Agent/contract_uploads/
 # 链路对比实验结果
 Agent/legal_qa/results/
+# 链路对比脚本 compare_rag_redis_mysql.py 的输出（以工作目录为基准）
+Agent/legal_qa/mysql_qa/results/
 # 评估回归门运行报告（可随时重新生成；基线 CSV 正常入库）
 scripts/results/eval_report_*.json
 

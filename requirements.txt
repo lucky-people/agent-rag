@@ -1,6 +1,7 @@
 # ============================================================
 # 基于多智能体与RAG的智能租房咨询系统 - 依赖清单
-# 环境: Python 3.10+ / conda 虚拟环境 lang_env
+# 环境: Python 3.11+ / conda 虚拟环境 lang_env
+# （numpy 2.3 / scikit-learn 1.9 / matplotlib 3.11 均已要求 >=3.11，故 3.10 无法安装）
 # 安装:
 #   CPU 机器:  pip install -r requirements.txt
 #   GPU 机器:  pip install -r requirements.txt -r requirements-gpu.txt

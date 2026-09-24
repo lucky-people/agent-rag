@@ -11,7 +11,6 @@
 #   docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/rental_schema.sql
 #   docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
 # ============================================================
-version: "3.8"
 
 services:
   mysql:

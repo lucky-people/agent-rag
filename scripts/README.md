@@ -7,6 +7,7 @@
 ```
 scripts/
 ├── README.md                          # 本说明文档
+├── download_models.py                 # 本地模型一键下载（bert-base-chinese / bge-m3 / bge-reranker-large）
 ├── data/
 │   ├── rag_test_questions.json        # RAG 检索测试集（30道租房法律问题，带标注关键词）
 │   ├── intent_train_data.jsonl        # 意图分类训练集（BERT 微调）

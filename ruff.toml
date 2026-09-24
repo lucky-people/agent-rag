@@ -2,7 +2,7 @@
 # 规则说明：E4/E7/E9 = pycodestyle 语法/逻辑错误子集；F = pyflakes 未定义/未使用等
 # 后续可逐步开启更多规则（I 导入排序 / UP 升级建议 / B bugbear）
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 exclude = [
     "config_local",          # 本地密钥，不入库

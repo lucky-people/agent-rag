@@ -1,9 +1,9 @@
 # 🏠 智租顾问 · 基于多智能体协作与 Agentic RAG 的智能租房咨询系统
 
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
-![star](https://gitee.com/gao-shuaizhou/zhizu-advisor/badge/star.svg)
-![python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-3776AB.svg)
-![tests](https://img.shields.io/badge/tests-41%20passed-brightgreen.svg)
+[![CI](https://github.com/lucky-people/agent-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/lucky-people/agent-rag/actions)
+![python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB.svg)
+![tests](https://img.shields.io/badge/tests-48%20passed-brightgreen.svg)
 ![a2a](https://img.shields.io/badge/A2A-MultiAgent-orange.svg)
 ![mcp](https://img.shields.io/badge/MCP-ToolCalling-blue.svg)
 ![rag](https://img.shields.io/badge/RAG-Agentic%20%2B%20Hybrid-green.svg)
@@ -13,11 +13,12 @@
   <b>💬 一句话问出答案：</b>
   <a href="https://www.bilibili.com/video/BV1queJ6qE7f">🎬 B站演示视频</a> ·
   <a href="README.md#-使用示例">📝 提问示例</a> ·
-  <a href="docs/TECHNICAL_DECISIONS.md">🧭 技术选型决策</a>
+  <a href="docs/TECHNICAL_DECISIONS.md">🧭 技术选型决策</a> ·
+  <a href="https://github.com/lucky-people/agent-rag">⭐ GitHub 仓库</a>
 </p>
 面向郑州本地租房场景的 **多智能体协作 + Agentic RAG** 智能问答系统：输入一句自然语言，系统自动完成 **LLM 意图路由 → A2A 多智能体编排 / Agentic RAG 反思循环 → 数据库 / 知识库检索 → SSE 流式回复**，覆盖房源查询、地铁出行、周边探索、综合推荐、法律问答与合同审查六大场景。
 
-> **技术栈**：Python 3.10 · Flask(SSE) · A2A 多智能体协议 · MCP 工具调用 · LangChain · LLM 意图路由（通义千问 qwen-plus） · BERT 查询分类 · BM25 + BGE-M3 混合检索 · BGE Reranker · Milvus 向量库 · Redis 缓存 · MySQL
+> **技术栈**：Python 3.11+ · Flask(SSE) · A2A 多智能体协议 · MCP 工具调用 · LangChain · LLM 意图路由（通义千问 qwen-plus） · BERT 查询分类 · BM25 + BGE-M3 混合检索 · BGE Reranker · Milvus 向量库 · Redis 缓存 · MySQL
 
 ---
 
@@ -259,7 +260,7 @@ RTX 4060（8GB）上复跑 4 策略消融（30 题）：
 
 ### 工程指标
 
-- ✅ **46 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析、指标采集）
+- ✅ **48 个单元测试通过**（`tests/`：SQL 白名单、Text2SQL 基类、编排降级、意图规则、JSON 解析、指标采集、模型缺失兜底）
 - ✅ **e2e 冒烟测试**（`tests/e2e_smoke.py`）+ CI 集成 ruff 静态检查
 - ✅ **评估回归门**（`scripts/eval_gate.py`）：一条命令跑固定评估集 → 确定性幻觉审计（+可选 RAGAS）→ 与黄金基线对比，指标回退超阈值即 exit 1 FAIL，可本地/CI 双跑（详见 `docs/EVAL_GATE.md`）
 - ✅ **管理员数据看板**（`/admin/dashboard`）：四层指标可视化，管理员/用户双端权限隔离（详见 `docs/ADMIN_DASHBOARD.md`）
@@ -340,12 +341,12 @@ Agent/                          # 主系统代码
 ├── mcp_server/                 # 工具执行层（MCP：统一封装 SQL + 只读白名单）
 ├── legal_qa/                   # 法律问答子系统（Agentic RAG：MySQL + Redis + BM25 + Milvus + 反思循环）
 ├── data_collection/                  # 数据采集（房天下爬虫 / 高德 POI / 地铁）
-├── sql/                        # 表结构 + 演示种子数据（51 房源 / 14 地铁站 / 14 POI）
+├── sql/                        # 表结构 + 演示种子数据（52 房源 / 15 地铁站 / 15 POI / 7 天天气）
 ├── ingest_rental_laws.py       # 法律条文向量化入库（Milvus）
-└── start.bat / start.sh     # 一键启动
+└── start.py / start.bat / start.sh   # 一键启动（预检 → 分组拉起 → 健康轮询 → 浏览器）
 docs/                           # 架构图 + 截图 + TECHNICAL_DECISIONS.md（选型决策全文）
-scripts/                        # 全部评估实验（脚本 + results 图/CSV）
-tests/                          # 41 个单元测试 + e2e 冒烟
+scripts/                        # 全部评估实验（脚本 + results 图/CSV）+ download_models.py（模型下载）
+tests/                          # 48 个单元测试 + e2e 冒烟
 docker-compose.yml              # MySQL + Redis + Milvus 一键启动
 config_local/                   # 本地密钥（已 gitignore）
 ```
@@ -354,7 +355,19 @@ config_local/                   # 本地密钥（已 gitignore）
 
 ## 🚀 快速开始
 
-1. **启动中间件 + 导入数据**：
+1. **克隆 + 安装依赖**（Python 3.11+，本地开发用到 3.12）：
+```bash
+git clone https://github.com/lucky-people/agent-rag.git && cd agent-rag
+conda create -n lang_env python=3.11 && conda activate lang_env
+pip install -r requirements.txt              # GPU 机器追加：pip install -r requirements-gpu.txt
+```
+2. **下载本地模型**（仅法律问答链路需要；房源/地铁/POI/闲聊不需要）：
+```bash
+python scripts/download_models.py            # bert-base-chinese + bge-m3 + bge-reranker-large，约 3.5GB
+# 国内网络可加速：set HF_ENDPOINT=https://hf-mirror.com（Linux 用 export）
+python scripts/train_intent_classifier.py    # 可选：生成微调意图分类器（缺失时用基础 BERT 兜底，质量下降）
+```
+3. **启动中间件 + 导入数据**：
 ```bash
 docker compose up -d
 docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/rental_schema.sql
@@ -362,9 +375,8 @@ docker exec -i zhizu-mysql mysql -uroot -pzhizu123 < Agent/sql/seed_data.sql
 docker exec -i zhizu-mysql mysql -uroot -pzhizu123 -e "CREATE DATABASE IF NOT EXISTS laws_all CHARACTER SET utf8mb4;"
 python Agent/legal_qa/mysql_qa/replace_jpkb_data.py   # 法律 FAQ 入库（BM25 依赖 jpkb 表）
 ```
-2. **配置密钥**：复制 `Agent/legal_qa/config.ini.example` → `config_local/config.ini`，创建 `config_local/keys.py` 填写 DashScope / MySQL / Redis 密钥（已 gitignore）
-3. **安装依赖**：`conda create -n lang_env python=3.10 && pip install -r requirements.txt`
-4. **一键启动**：Windows 双击 `Agent/start.bat`（自动启动 4 MCP → 5 A2A → Web）；Linux/macOS 执行 `./Agent/start.sh`，打开 http://localhost:8501
+4. **配置密钥**：复制 `Agent/legal_qa/config.ini.example` → `config_local/config.ini`，创建 `config_local/keys.py` 填写 DashScope / MySQL / Redis 密钥（已 gitignore）
+5. **一键启动**：Windows 双击 `Agent/start.bat`（自动启动 4 MCP → 5 A2A → Web）；Linux/macOS 执行 `./Agent/start.sh`，打开 http://localhost:8501
 
 > 法律问答需先构建向量库（可选，不影响房源/地铁/POI/闲聊）：`python Agent/ingest_rental_laws.py`、`python Agent/ingest_rental_tips.py`
 
